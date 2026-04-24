@@ -17,7 +17,8 @@
       "Bash(awk 'BEGIN{prev=\"\"} {if \\($0 == \"\" && prev == \"\"\\) next; print; prev=$0}' src/iframe/overlay/styles.js)",
       "Bash(mv /tmp/styles.js src/iframe/overlay/styles.js)",
       "Bash(awk 'NR==1{print;next} /^$/{next} {print}' src/iframe/overlay/styles.js)",
-      "Bash(git commit -m 'refactor\\(overlay\\): extract CSS to styles.js to honor 500-line cap *)"
+      "Bash(git commit -m 'refactor\\(overlay\\): extract CSS to styles.js to honor 500-line cap *)",
+      "Bash(git commit -m 'refactor\\(popup\\): split 856-line popup.js into 4 modules *)"
     ]
   }
 }
