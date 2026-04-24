@@ -25,15 +25,10 @@ const ENTRIES = [
   "shared/prompt-item.js",
 ];
 
-// Non-JS assets copied verbatim into dist/.
-// Source paths are relative to project root (not src/), since assets stay outside src/.
-const STATIC_ASSETS = [
+// Non-JS assets shipped in the extension — live under src/, mirrored into dist/.
+const SRC_ASSETS = [
   "manifest.json",
-  "_locales",
-  "_metadata",
   "icons",
-  "LICENSE",
-  "PRIVACY.md",
   "config/initialState.json",
   "config/rules.json",
   "config/siteHandlers.json",
@@ -49,16 +44,25 @@ const STATIC_ASSETS = [
   "iframe/iframe.css",
 ];
 
+// Top-level meta files — kept at repo root for GitHub display, also copied
+// into the shipped extension so Chrome Web Store review can see them.
+const ROOT_ASSETS = ["LICENSE", "PRIVACY.md"];
+
+async function copyOne(from, to) {
+  if (!existsSync(from)) {
+    console.warn(`[assets] skip missing: ${path.relative(ROOT, from)}`);
+    return;
+  }
+  await mkdir(path.dirname(to), { recursive: true });
+  await cp(from, to, { recursive: true });
+}
+
 async function copyAssets() {
-  for (const rel of STATIC_ASSETS) {
-    const from = path.join(ROOT, rel);
-    const to = path.join(DIST, rel);
-    if (!existsSync(from)) {
-      console.warn(`[assets] skip missing: ${rel}`);
-      continue;
-    }
-    await mkdir(path.dirname(to), { recursive: true });
-    await cp(from, to, { recursive: true });
+  for (const rel of SRC_ASSETS) {
+    await copyOne(path.join(SRC, rel), path.join(DIST, rel));
+  }
+  for (const rel of ROOT_ASSETS) {
+    await copyOne(path.join(ROOT, rel), path.join(DIST, rel));
   }
 }
 
