@@ -1,7 +1,10 @@
+import {
+  SEARCH_GROUPS_STORAGE_KEY,
+  UI_PREFS_STORAGE_KEY,
+} from "./shared/storage-keys.js";
+
 const COMPARE_PAGE_BASE_URL = chrome.runtime.getURL("iframe/iframe.html");
 const SETTINGS_PAGE_URL = chrome.runtime.getURL("settings/settings.html");
-const SEARCH_GROUPS_STORAGE_KEY = "searchGroups";
-const UI_PREFS_STORAGE_KEY = "uiPrefs";
 const AI_SITE_IDS = ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "gemini", "chatgpt", "claude", "grok"];
 const WARMUP_COOLDOWN_MS = 5 * 60 * 1000;
 let lastWarmupAt = 0;
