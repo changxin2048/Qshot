@@ -4,7 +4,9 @@
       "Bash(cp iframe/*.js src/iframe/)",
       "Bash(cp shared/*.js src/shared/)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'refactor\\(inject\\): split 1551-line inject.js into 7 modules *)"
     ]
   }
 }
