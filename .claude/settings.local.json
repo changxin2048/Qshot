@@ -6,7 +6,8 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'refactor\\(inject\\): split 1551-line inject.js into 7 modules *)"
+      "Bash(git commit -m 'refactor\\(inject\\): split 1551-line inject.js into 7 modules *)",
+      "Bash(git commit -m 'refactor\\(overlay\\): split 1554-line overlay.js into 6 modules *)"
     ]
   }
 }
