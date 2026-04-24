@@ -139,10 +139,20 @@ function reportCurrentUrl(site) {
   }
   lastReportedUrl = currentUrl;
   const targetOrigin = EXTENSION_ORIGIN || "*";
-  window.parent.postMessage(
-    { type: "QSHOT_URL_UPDATE", siteId: site.id, currentUrl },
-    targetOrigin
-  );
+  // Wrap in try/catch: inject.js runs in every frame (all_frames:true), and
+  // for a third-party site's own nested iframe the parent origin is the site
+  // itself (e.g. https://gemini.google.com), not our extension. postMessage
+  // with a non-matching targetOrigin throws synchronously in that case.
+  // We still want the strict origin check to protect data leakage to
+  // non-extension parents, so we swallow the resulting error silently.
+  try {
+    window.parent.postMessage(
+      { type: "QSHOT_URL_UPDATE", siteId: site.id, currentUrl },
+      targetOrigin
+    );
+  } catch (_error) {
+    // Parent is not our extension page — that's fine, just skip the report.
+  }
 }
 
 function installRuntimeMessageListener() {
