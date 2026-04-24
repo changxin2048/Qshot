@@ -80,7 +80,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "popup/logo.svg"
+        "popup/logo.svg",
+        "config/siteHandlers.json",
+        "config/random-questions/zh-CN.txt",
+        "config/random-questions/en.txt"
       ],
       "matches": [
         "<all_urls>",

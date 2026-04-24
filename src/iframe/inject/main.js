@@ -42,10 +42,23 @@ async function resolveSite(explicitSite) {
 
 async function loadRegistry() {
   if (registryCache.sites) return registryCache.sites;
-  const response = await fetch(chrome.runtime.getURL("config/siteHandlers.json"));
-  if (!response.ok) throw new Error("无法读取站点配置");
-  const payload = await response.json();
-  registryCache.sites = payload.sites || [];
+  // Use an already-cached empty list as a graceful fallback. This matters
+  // because the fetch can fail in two ways on random third-party pages:
+  //   (a) the resource isn't listed in web_accessible_resources (shouldn't
+  //       happen anymore, but belt & suspenders), or
+  //   (b) an ad/privacy blocker in the user's browser intercepts the
+  //       chrome-extension:// URL and returns ERR_BLOCKED_BY_CLIENT.
+  // Without this guard every content-script caller (URL reporting, sidebar
+  // fix, message listener) throws an uncaught promise rejection on every
+  // page load.
+  try {
+    const response = await fetch(chrome.runtime.getURL("config/siteHandlers.json"));
+    if (!response.ok) throw new Error("无法读取站点配置");
+    const payload = await response.json();
+    registryCache.sites = payload.sites || [];
+  } catch (_error) {
+    registryCache.sites = [];
+  }
   return registryCache.sites;
 }
 
@@ -90,7 +103,12 @@ function notifyParentFrame(result) {
 }
 
 async function setupUrlReporting() {
-  const site = await resolveSite();
+  let site;
+  try {
+    site = await resolveSite();
+  } catch (_error) {
+    return;
+  }
   if (!site) return;
 
   reportCurrentUrl(site);
