@@ -1,34 +1,21 @@
-﻿(function initPopup() {
+﻿import {
+  SEARCH_GROUPS_STORAGE_KEY,
+  SEARCH_HISTORY_STORAGE_KEY,
+  PROMPT_GROUPS_STORAGE_KEY,
+  UI_PREFS_STORAGE_KEY,
+  CUSTOM_SITES_STORAGE_KEY,
+  RANDOM_QUESTIONS_STORAGE_KEY,
+  DEFAULT_PROMPT_GROUP_ID,
+} from "../shared/storage-keys.js";
+import {
+  getAllPromptGroupName,
+  isAllPromptGroup,
+  getPromptGroupDisplayName,
+  getDisplayPromptEntries,
+} from "../shared/prompt-groups.js";
+
+(function initPopup() {
   const { applyDomI18n, getUiLanguage, t } = window.__QSHOT_I18N__ || {};
-  const SEARCH_GROUPS_STORAGE_KEY = "searchGroups";
-  const SEARCH_HISTORY_STORAGE_KEY = "searchHistory";
-  const PROMPT_GROUPS_STORAGE_KEY = "promptGroups";
-  const UI_PREFS_STORAGE_KEY = "uiPrefs";
-  const CUSTOM_SITES_STORAGE_KEY = "customSites";
-  const RANDOM_QUESTIONS_STORAGE_KEY = "randomQuestionsText";
-  // "全部"分组：第一位固定、无法删除，视图上是所有分组提示词的并集。
-  const DEFAULT_PROMPT_GROUP_ID = "prompt-group-default";
-  function getAllPromptGroupName() {
-    return (t && t("settings_prompts_allGroup")) || "全部";
-  }
-  function isAllPromptGroup(group) {
-    return !!group && group.id === DEFAULT_PROMPT_GROUP_ID;
-  }
-  function getPromptGroupDisplayName(group) {
-    if (isAllPromptGroup(group)) return getAllPromptGroupName();
-    return group?.name || "未命名分组";
-  }
-  function getDisplayPromptEntries(group, allGroups) {
-    if (!group) return [];
-    if (isAllPromptGroup(group)) {
-      const out = [];
-      (allGroups || []).forEach((g) => {
-        (g.prompts || []).forEach((prompt) => out.push({ prompt, sourceGroup: g }));
-      });
-      return out;
-    }
-    return (group.prompts || []).map((prompt) => ({ prompt, sourceGroup: group }));
-  }
   // 随机问题题库：优先读 chrome.storage.local 里用户在设置中维护的内容；
   // 若用户还没改过（首次运行），fallback 到 config/random-questions/*.txt 的默认题库。
   // 解析规则：一行一题，空行与以 # 开头的注释行会被忽略。

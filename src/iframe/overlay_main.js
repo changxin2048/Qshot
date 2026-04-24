@@ -1,3 +1,5 @@
+import { matchShortcut, normalizeShortcut } from "../shared/shortcut.js";
+
 (function initQshotMainHotkey() {
   if (window.__QSHOT_MAIN_HOTKEY_INSTALLED__) {
     return;
@@ -59,29 +61,4 @@
     }
   }
 
-  function matchShortcut(event, sc) {
-    if (!sc || !sc.key) return false;
-    if ((!!sc.ctrlKey) !== event.ctrlKey) return false;
-    if ((!!sc.shiftKey) !== event.shiftKey) return false;
-    if ((!!sc.altKey) !== event.altKey) return false;
-    if ((!!sc.metaKey) !== event.metaKey) return false;
-    return normalizeKey(event.key) === normalizeKey(sc.key);
-  }
-
-  function normalizeKey(key) {
-    if (!key) return "";
-    if (key.length === 1) return key.toUpperCase();
-    return key;
-  }
-
-  function normalizeShortcut(input) {
-    const key = typeof input.key === "string" && input.key.length > 0 ? input.key : "Q";
-    return {
-      ctrlKey: !!input.ctrlKey,
-      shiftKey: !!input.shiftKey,
-      altKey: !!input.altKey,
-      metaKey: !!input.metaKey,
-      key: key.length === 1 ? key.toUpperCase() : key
-    };
-  }
 })();

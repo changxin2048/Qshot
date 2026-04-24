@@ -1,27 +1,26 @@
-﻿(function initSettingsPage() {
+﻿import {
+  SEARCH_GROUPS_STORAGE_KEY as GROUPS_STORAGE_KEY,
+  PROMPT_GROUPS_STORAGE_KEY as PROMPTS_STORAGE_KEY,
+  UI_PREFS_STORAGE_KEY,
+  CUSTOM_SITES_STORAGE_KEY,
+  RANDOM_QUESTIONS_STORAGE_KEY,
+  DEFAULT_PROMPT_GROUP_ID,
+  LEGACY_DEFAULT_GROUP_NAME,
+  RANDOM_QUESTIONS_FILES,
+} from "../shared/storage-keys.js";
+import {
+  getAllPromptGroupName,
+  isAllPromptGroup,
+} from "../shared/prompt-groups.js";
+import {
+  normalizeShortcut,
+  formatShortcut,
+  isShortcutValid,
+} from "../shared/shortcut.js";
+
+(function initSettingsPage() {
   const { t, applyDomI18n } = window.__QSHOT_I18N__ || {};
   const msg = (key, fallback) => (t ? (t(key) || fallback || "") : fallback || "");
-
-  const GROUPS_STORAGE_KEY = "searchGroups";
-  const PROMPTS_STORAGE_KEY = "promptGroups";
-  const UI_PREFS_STORAGE_KEY = "uiPrefs";
-  const CUSTOM_SITES_STORAGE_KEY = "customSites";
-  const RANDOM_QUESTIONS_STORAGE_KEY = "randomQuestionsText";
-  // "全部" 是一个特殊的固定分组：永远在第一位、不能删除、不能重命名、不能拖动。
-  // 它在界面上等同于所有分组提示词的并集；用户也可以把提示词直接加到它下面，
-  // 这时提示词会存储在这个分组里，并同样出现在"全部"视图中。
-  const DEFAULT_PROMPT_GROUP_ID = "prompt-group-default";
-  const LEGACY_DEFAULT_GROUP_NAME = "默认分组";
-  function getAllPromptGroupName() {
-    return msg("settings_prompts_allGroup", "全部");
-  }
-  function isAllPromptGroup(group) {
-    return !!group && group.id === DEFAULT_PROMPT_GROUP_ID;
-  }
-  const RANDOM_QUESTIONS_FILES = {
-    zh: "config/random-questions/zh-CN.txt",
-    en: "config/random-questions/en.txt"
-  };
   const PICKER_CLOSE_DELAY_MS = 320;
   let _hoverCardKeyHandler = null;
   const COMMON_SEARCH_PARAM_KEYS = ["q", "query", "wd", "word", "kw", "keyword", "s", "search", "key", "k", "text", "term", "w"];
@@ -375,36 +374,6 @@
     };
   }
 
-  function normalizeShortcut(input) {
-    const fallback = { ctrlKey: true, shiftKey: false, altKey: false, metaKey: false, key: "Q" };
-    if (!input || typeof input !== "object") return fallback;
-    const key = typeof input.key === "string" && input.key.length > 0 ? input.key : fallback.key;
-    return {
-      ctrlKey: !!input.ctrlKey,
-      shiftKey: !!input.shiftKey,
-      altKey: !!input.altKey,
-      metaKey: !!input.metaKey,
-      key: key.length === 1 ? key.toUpperCase() : key
-    };
-  }
-
-  function formatShortcut(sc) {
-    if (!sc || !sc.key) return msg("common_notSet", "未设置");
-    const parts = [];
-    if (sc.ctrlKey) parts.push("Ctrl");
-    if (sc.altKey) parts.push("Alt");
-    if (sc.shiftKey) parts.push("Shift");
-    if (sc.metaKey) parts.push(/Mac/i.test(navigator.platform) ? "Cmd" : "Win");
-    parts.push(sc.key.length === 1 ? sc.key.toUpperCase() : sc.key);
-    return parts.join(" + ");
-  }
-
-  function isShortcutValid(sc) {
-    if (!sc || !sc.key) return false;
-    if (sc.key === "Control" || sc.key === "Shift" || sc.key === "Alt" || sc.key === "Meta") return false;
-    // 必须至少包含一个修饰键，避免和正常打字冲突
-    return sc.ctrlKey || sc.altKey || sc.metaKey || (sc.shiftKey && sc.key.length > 1);
-  }
 
   function getGroupById(groupId) {
     return groups.find((item) => item.id === groupId) || null;

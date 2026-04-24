@@ -1,3 +1,24 @@
+import {
+  SEARCH_GROUPS_STORAGE_KEY,
+  SEARCH_HISTORY_STORAGE_KEY,
+  PROMPT_GROUPS_STORAGE_KEY,
+  UI_PREFS_STORAGE_KEY,
+  CUSTOM_SITES_STORAGE_KEY,
+  RANDOM_QUESTIONS_STORAGE_KEY,
+  DEFAULT_PROMPT_GROUP_ID,
+} from "../shared/storage-keys.js";
+import {
+  getAllPromptGroupName,
+  isAllPromptGroup,
+  getPromptGroupDisplayName,
+  getDisplayPromptEntries,
+} from "../shared/prompt-groups.js";
+import {
+  matchShortcut,
+  normalizeShortcut,
+  normalizeKey,
+} from "../shared/shortcut.js";
+
 (function initQshotOverlay() {
   if (window.__QSHOT_OVERLAY_INSTALLED__) {
     return;
@@ -12,37 +33,6 @@
       return fallback || "";
     }
   };
-
-  const SEARCH_GROUPS_STORAGE_KEY = "searchGroups";
-  const SEARCH_HISTORY_STORAGE_KEY = "searchHistory";
-  const PROMPT_GROUPS_STORAGE_KEY = "promptGroups";
-  const UI_PREFS_STORAGE_KEY = "uiPrefs";
-  const CUSTOM_SITES_STORAGE_KEY = "customSites";
-  // "全部"分组：第一位固定、无法删除，视图上是所有分组提示词的并集。
-  const DEFAULT_PROMPT_GROUP_ID = "prompt-group-default";
-  function getAllPromptGroupName() {
-    return t("settings_prompts_allGroup", null, "全部");
-  }
-  function isAllPromptGroup(group) {
-    return !!group && group.id === DEFAULT_PROMPT_GROUP_ID;
-  }
-  function getPromptGroupDisplayName(group) {
-    if (isAllPromptGroup(group)) return getAllPromptGroupName();
-    return group?.name || t("overlay_unnamedPromptGroup", null, "未命名分组");
-  }
-  function getDisplayPromptEntries(group, allGroups) {
-    if (!group) return [];
-    if (isAllPromptGroup(group)) {
-      const out = [];
-      (allGroups || []).forEach((g) => {
-        (g.prompts || []).forEach((prompt) => out.push({ prompt, sourceGroup: g }));
-      });
-      return out;
-    }
-    return (group.prompts || []).map((prompt) => ({ prompt, sourceGroup: group }));
-  }
-
-  const RANDOM_QUESTIONS_STORAGE_KEY = "randomQuestionsText";
   // 随机问题题库：优先读 chrome.storage.local 里用户在设置中维护的内容；
   // 首次运行时 fallback 到 config/random-questions/*.txt 的默认题库。
   // 解析规则：一行一题，空行与以 # 开头的注释行会被忽略。
@@ -748,20 +738,6 @@
     event.preventDefault();
     event.stopPropagation();
     closeOverlay();
-  }
-
-  function matchShortcut(event, sc) {
-    if ((!!sc.ctrlKey) !== event.ctrlKey) return false;
-    if ((!!sc.shiftKey) !== event.shiftKey) return false;
-    if ((!!sc.altKey) !== event.altKey) return false;
-    if ((!!sc.metaKey) !== event.metaKey) return false;
-    return normalizeKey(event.key) === normalizeKey(sc.key);
-  }
-
-  function normalizeKey(key) {
-    if (!key) return "";
-    if (key.length === 1) return key.toUpperCase();
-    return key;
   }
 
   async function toggleOverlay() {
@@ -1573,19 +1549,6 @@
     } catch (_err) {
       /* 忽略 */
     }
-  }
-
-  function normalizeShortcut(input) {
-    const fallback = { ctrlKey: true, shiftKey: false, altKey: false, metaKey: false, key: "Q" };
-    if (!input || typeof input !== "object") return fallback;
-    const key = typeof input.key === "string" && input.key.length > 0 ? input.key : fallback.key;
-    return {
-      ctrlKey: !!input.ctrlKey,
-      shiftKey: !!input.shiftKey,
-      altKey: !!input.altKey,
-      metaKey: !!input.metaKey,
-      key: key.length === 1 ? key.toUpperCase() : key
-    };
   }
 
 })();

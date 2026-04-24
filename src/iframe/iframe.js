@@ -1,3 +1,11 @@
+import { DEFAULT_PROMPT_GROUP_ID } from "../shared/storage-keys.js";
+import {
+  getAllPromptGroupName,
+  isAllPromptGroup,
+  getPromptGroupDisplayName,
+  getDisplayPromptEntries,
+} from "../shared/prompt-groups.js";
+
 (function initComparePage() {
   const { t, applyDomI18n } = window.__QSHOT_I18N__ || {};
   const BASE_CONFIG = globalThis.QSHOT_BASE_CONFIG || {};
@@ -8,29 +16,6 @@
     searchHistory: "searchHistory",
     promptGroups: "promptGroups"
   };
-  // "全部"分组：第一位固定、无法删除，视图上是所有分组提示词的并集。
-  const DEFAULT_PROMPT_GROUP_ID = "prompt-group-default";
-  function getAllPromptGroupName() {
-    return (t && t("settings_prompts_allGroup")) || "全部";
-  }
-  function isAllPromptGroup(group) {
-    return !!group && group.id === DEFAULT_PROMPT_GROUP_ID;
-  }
-  function getPromptGroupDisplayName(group) {
-    if (isAllPromptGroup(group)) return getAllPromptGroupName();
-    return group?.name || "未命名分组";
-  }
-  function getDisplayPromptEntries(group, allGroups) {
-    if (!group) return [];
-    if (isAllPromptGroup(group)) {
-      const out = [];
-      (allGroups || []).forEach((g) => {
-        (g.prompts || []).forEach((prompt) => out.push({ prompt, sourceGroup: g }));
-      });
-      return out;
-    }
-    return (group.prompts || []).map((prompt) => ({ prompt, sourceGroup: group }));
-  }
 
   const SITE_CATEGORIES = [
     { id: "ai", label: "AI", builtinIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso", "gemini", "chatgpt", "claude", "grok"] },
