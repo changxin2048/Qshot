@@ -11,6 +11,10 @@ const RANDOM_QUESTIONS_FILES = {
 let randomQuestionsPromise = null;
 let lastRandomQuestionIndex = -1;
 
+function msg(key, fallback = "") {
+  return window.__QSHOT_I18N__?.t?.(key) || fallback;
+}
+
 export function invalidateRandomQuestionsCache() {
   randomQuestionsPromise = null;
   lastRandomQuestionIndex = -1;
@@ -39,17 +43,30 @@ async function fetchDefaultRandomQuestionsText() {
 function loadRandomQuestions() {
   if (randomQuestionsPromise) return randomQuestionsPromise;
   randomQuestionsPromise = (async () => {
+    const getUiLanguage = window.__QSHOT_I18N__?.getUiLanguage;
+    const uiLang = (getUiLanguage?.() || "").toLowerCase();
+    const currentDefaultText = await fetchDefaultRandomQuestionsText();
+    const otherPath = uiLang.startsWith("zh") ? RANDOM_QUESTIONS_FILES.en : RANDOM_QUESTIONS_FILES.zh;
+    let otherDefaultText = "";
+    try {
+      const res = await fetch(chrome.runtime.getURL(otherPath));
+      otherDefaultText = res.ok ? await res.text() : "";
+    } catch (_e) {
+      otherDefaultText = "";
+    }
     try {
       const stored = await chrome.storage.local.get([RANDOM_QUESTIONS_STORAGE_KEY]);
       const raw = stored[RANDOM_QUESTIONS_STORAGE_KEY];
       const isOldDefault = typeof raw === "string" && raw.trimStart().startsWith("#");
-      if (typeof raw === "string" && !isOldDefault) {
+      const hasCustomText = typeof raw === "string" && raw.trim().length > 0;
+      const isOtherLangDefault = hasCustomText && raw.trim() === otherDefaultText.trim();
+      if (hasCustomText && !isOldDefault && !isOtherLangDefault) {
         return parseRandomQuestionsText(raw);
       }
     } catch (_e) {
       /* fallback */
     }
-    return parseRandomQuestionsText(await fetchDefaultRandomQuestionsText());
+    return parseRandomQuestionsText(currentDefaultText);
   })();
   return randomQuestionsPromise;
 }
@@ -165,8 +182,13 @@ function scheduleHideGroupTooltip() {
 function renderGroupTooltipSites(tooltip, sites) {
   tooltip.innerHTML = "";
   const list = document.createElement("div");
+  const columns = Math.min(5, Math.max(1, sites.length));
   list.className = "group-tooltip-list";
-  list.style.gridTemplateColumns = `repeat(${Math.min(5, Math.max(1, sites.length))}, max-content)`;
+  list.style.gridTemplateColumns = `repeat(${columns}, max-content)`;
+  const maxItemWidth = getTooltipItemMaxWidth(tooltip, sites, columns);
+  if (maxItemWidth) {
+    list.style.setProperty("--group-tooltip-item-max-width", `${maxItemWidth}px`);
+  }
   sites.forEach((site) => {
     const item = document.createElement("button");
     item.type = "button";
@@ -181,6 +203,31 @@ function renderGroupTooltipSites(tooltip, sites) {
     list.appendChild(item);
   });
   tooltip.appendChild(list);
+}
+
+function getTooltipItemMaxWidth(tooltip, sites, columns) {
+  const availableWidth = Math.max(160, window.innerWidth - 28);
+  const gapWidth = 6;
+  const buttonWidths = sites.map((site) => estimateTooltipButtonWidth(tooltip, site.name));
+
+  for (let i = 0; i < buttonWidths.length; i += columns) {
+    const rowWidths = buttonWidths.slice(i, i + columns);
+    const rowWidth = rowWidths.reduce((sum, width) => sum + width, 0) + gapWidth * Math.max(0, rowWidths.length - 1);
+    if (rowWidth > availableWidth) {
+      return Math.floor((availableWidth - gapWidth * (columns - 1)) / columns);
+    }
+  }
+
+  return 0;
+}
+
+function estimateTooltipButtonWidth(tooltip, label) {
+  const canvas = estimateTooltipButtonWidth.canvas || document.createElement("canvas");
+  estimateTooltipButtonWidth.canvas = canvas;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 80;
+  ctx.font = window.getComputedStyle(tooltip).font || "12px Microsoft YaHei UI";
+  return Math.ceil(ctx.measureText(String(label || "")).width) + 20;
 }
 
 async function openSiteHome(url) {
@@ -217,7 +264,7 @@ export function renderHistory(history) {
   if (history.length === 0) {
     const empty = document.createElement("div");
     empty.className = "popup-history-empty";
-    empty.textContent = "暂无搜索记录";
+    empty.textContent = msg("popup_emptyHistory", "暂无搜索记录");
     historyList.appendChild(empty);
     return;
   }
@@ -233,7 +280,7 @@ export function renderHistory(history) {
         <div class="popup-history-query">${escapeHtml(query)}</div>
         <div class="popup-history-meta">${escapeHtml(dateText)}</div>
       </div>
-      <button class="popup-history-delete-btn" type="button" aria-label="删除这条记录">×</button>
+      <button class="popup-history-delete-btn" type="button" aria-label="${msg("popup_deleteHistoryEntry", "删除这条记录")}">×</button>
     `;
     const deleteBtn = item.querySelector(".popup-history-delete-btn");
     if (deleteBtn) {
@@ -316,7 +363,7 @@ export function renderPromptPicker() {
   if (!state.promptGroups.length) {
     const empty = document.createElement("div");
     empty.className = "popup-prompt-picker-empty";
-    empty.textContent = "还没有提示词分组，请先去设置里添加。";
+    empty.textContent = msg("popup_emptyPromptGroups", "还没有提示词分组，请先去设置里添加。");
     promptPicker.appendChild(empty);
     state.updatePromptPickerLayoutState();
     return;
@@ -358,8 +405,8 @@ export function renderPromptPicker() {
     const empty = document.createElement("div");
     empty.className = "popup-prompt-picker-empty";
     empty.textContent = isAllPromptGroup(activeGroup)
-      ? "还没有提示词，请先去设置里添加。"
-      : "这个分组里还没有提示词。";
+      ? msg("popup_emptyPrompts", "还没有提示词，请先去设置里添加。")
+      : msg("popup_emptyPromptsInGroup", "这个分组里还没有提示词。");
     promptsColumn.appendChild(empty);
   } else {
     state.popupPreviewMgr =
@@ -370,7 +417,13 @@ export function renderPromptPicker() {
           if (queryInput) {
             queryInput.value = p.content || "";
             closePromptPicker();
-            queryInput.focus();
+            state.syncComposerLayout({ scrollToTop: true });
+            requestAnimationFrame(() => {
+              queryInput.focus();
+              queryInput.setSelectionRange(0, 0);
+              queryInput.scrollTop = 0;
+              state.syncComposerLayout({ scrollToTop: true });
+            });
           }
         },
         onEdit: (p) => openPopupPromptEditModal(p, sourceGroup.id),
@@ -388,7 +441,7 @@ export function renderPromptPicker() {
   const settingsLink = document.createElement("button");
   settingsLink.type = "button";
   settingsLink.className = "popup-prompt-picker-settings-btn";
-  settingsLink.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>管理提示词`;
+  settingsLink.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>${msg("popup_managePrompts", "管理提示词")}`;
   settingsLink.addEventListener("click", async (e) => {
     e.stopPropagation();
     await chrome.runtime.sendMessage({ type: "OPEN_SETTINGS_PAGE", section: "prompts" });

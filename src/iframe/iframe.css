@@ -265,6 +265,11 @@
 .bottom-composer .composer-input-shell { padding: 6px 18px 8px; min-height: 68px; }
 .bottom-composer .bottom-query-input { min-height: 30px; max-height: 64px; }
 
+.iframes-container.is-scroll-guarded {
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+
 .card-nav-row {
   flex: none;
   width: fit-content;

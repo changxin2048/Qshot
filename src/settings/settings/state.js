@@ -72,8 +72,8 @@ export const SECTION_META = {
 };
 
 export const GROUP_MODE_OPTIONS = [
-  { value: "compare", label: "卡片呈现" },
-  { value: "tabs", label: "新开标签" }
+  { value: "compare", label: msg("settings_groups_modeCompare", "卡片呈现") },
+  { value: "tabs", label: msg("settings_groups_modeTabs", "新开标签") }
 ];
 
 // Shared mutable state. Populated by main.js#start after DOM is ready.

@@ -112,6 +112,7 @@ export function createNormalizedUiPrefs(input) {
     showPromptButton: source.showPromptButton !== false,
     prewarmEnabled: source.prewarmEnabled !== false,
     overlayShortcutEnabled: source.overlayShortcutEnabled !== false,
+    diagnosticLogsEnabled: source.diagnosticLogsEnabled === true,
     overlayShortcut: normalizeShortcut(source.overlayShortcut)
   };
 }
@@ -225,7 +226,7 @@ export function convertUrlToTemplate(rawUrl) {
 
   return {
     ok: false,
-    error: msg("settings_custom_convertNoParam", "未能自动识别搜索参数，请手动在 URL 中把搜索词替换成 {query}。")
+    error: msg("settings_custom_convertNoParam", "未能识别到搜索参数。请提供带有搜索词参数的搜索结果链接，或手动在 URL 中把搜索词替换成 {query}。")
   };
 }
 

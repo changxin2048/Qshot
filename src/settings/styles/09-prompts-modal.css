@@ -1,0 +1,269 @@
+.prompt-hover-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  flex-shrink: 0;
+}
+
+.prompt-hover-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-hover-card-copy-btn,
+.prompt-hover-card-edit-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+
+.prompt-hover-card-copy-btn {
+  border: none;
+  background: #111111;
+  color: #ffffff;
+}
+
+.prompt-hover-card-copy-btn:hover {
+  background: #333333;
+}
+
+.prompt-hover-card-copy-btn.is-copied {
+  background: #2dbf62;
+}
+
+.prompt-hover-card-edit-btn {
+  border: 1px solid #dcdcdc;
+  background: #ffffff;
+  color: #333333;
+}
+
+.prompt-hover-card-edit-btn:hover {
+  background: #f5f5f5;
+  border-color: #c0c0c0;
+}
+
+.prompt-hover-card-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #888888;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.prompt-hover-card-close-btn:hover {
+  background: #f5f5f5;
+  color: #111111;
+}
+
+.prompt-hover-card-title {
+  padding: 14px 18px 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.prompt-hover-card-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 18px 18px;
+  font-size: var(--fs-lg);
+  line-height: 1.7;
+  color: #444444;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.prompt-hover-card-body::-webkit-scrollbar {
+  width: 5px;
+}
+.prompt-hover-card-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.prompt-hover-card-body::-webkit-scrollbar-thumb {
+  background: #dcdcdc;
+  border-radius: 3px;
+}
+/* ── End Prompt hover card ───────────────────────────────────────────────── */
+
+/* ── Prompt editor modal: field groups & select arrow ───────────────────── */
+
+/* 减小弹窗 flex gap，改用 field 分组控制间距 */
+.prompt-editor-modal {
+  gap: 12px;
+}
+
+.prompt-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* select 自定义箭头（右对齐，不再偏左） */
+.prompt-editor-group-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23111111' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: calc(100% - 12px) center;
+  background-size: 14px 14px;
+  cursor: pointer;
+}
+
+/* 新建分组内联行 */
+.prompt-new-group-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.prompt-new-group-row[hidden] {
+  display: none !important;
+}
+
+
+.prompt-new-group-input {
+  flex: 1;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: var(--r-md);
+  background: #ffffff;
+  color: #000000;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  outline: none;
+}
+
+.prompt-new-group-input:focus {
+  border-color: #111111;
+}
+
+.prompt-new-group-confirm-btn {
+  min-height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--r-md);
+  background: #111111;
+  color: #ffffff;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease;
+}
+
+.prompt-new-group-confirm-btn:hover {
+  background: #333333;
+}
+
+/* ── End Prompt editor modal ─────────────────────────────────────────────── */
+
+.prompt-delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.prompt-delete-confirm-dialog {
+  width: min(360px, 100%);
+  border-radius: var(--r-lg);
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+  padding: 22px;
+}
+
+.prompt-delete-confirm-title {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.4;
+}
+
+.prompt-delete-confirm-message {
+  margin-top: 10px;
+  font-size: var(--fs-lg);
+  color: #555555;
+  line-height: 1.6;
+}
+
+.prompt-delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.prompt-delete-confirm-cancel,
+.prompt-delete-confirm-submit {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prompt-delete-confirm-cancel {
+  border: 1px solid #dcdcdc;
+  background: #ffffff;
+  color: #111111;
+}
+
+.prompt-delete-confirm-submit {
+  border: none;
+  background: #ef3d35;
+  color: #ffffff;
+}
+
+.prompt-delete-confirm-cancel:hover {
+  background: #f5f5f5;
+}
+
+.prompt-delete-confirm-submit:hover {
+  background: #d8322c;
+}
+
+/* ── 修复窄屏条纹问题 ─────────────────────────────────────────────────────
+   底部的无条件 ::after 覆盖把 height 改成 calc(100vh - 20px)，
+   导致在 1080px 下 width:100% + 全屏高 + to-right 渐变 = 满屏竖条纹。
+   在这里用更高优先级的媒体查询把窄屏下的分割线还原回正确形态。 */
+@media (max-width: 1080px) {
+  .settings-sidebar::after {
+    top: auto !important;
+    bottom: -20px !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 1px !important;
+    background: repeating-linear-gradient(
+      to right,
+      #dcdcdc 0 7px,
+      transparent 7px 14px
+    ) !important;
+  }
+}
+/* ── End 修复窄屏条纹 ────────────────────────────────────────────────────── */

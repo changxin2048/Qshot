@@ -30,7 +30,7 @@ export const state = {
 
 export function t(key, substitutions, fallback = "") {
   try {
-    const msg = chrome?.i18n?.getMessage?.(key, substitutions);
+    const msg = chrome?.i18n?.getMessage?.(key, substitutions) || window.__QSHOT_I18N__?.t?.(key, substitutions);
     return msg || fallback || "";
   } catch (_e) {
     return fallback || "";
@@ -70,9 +70,11 @@ export function formatHistoryDate(value) {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
   if (sameDay) {
-    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    const lang = window.__QSHOT_I18N__?.getUiLanguage?.() || navigator.language || "zh-CN";
+    return date.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
   }
-  return date.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+  const lang = window.__QSHOT_I18N__?.getUiLanguage?.() || navigator.language || "zh-CN";
+  return date.toLocaleDateString(lang, { month: "numeric", day: "numeric" });
 }
 
 export async function refreshGroups() {

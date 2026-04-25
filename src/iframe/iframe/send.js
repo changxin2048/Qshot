@@ -17,9 +17,11 @@ import {
 import { clearIframeTimers, removeFromLoadQueue, pumpLoadQueue } from "./load-queue.js";
 import { saveSearchHistory, refreshHistoryEntryUrls } from "./history.js";
 import { quickCaptureAllResponses } from "./export.js";
+import { diagnosticLog } from "../../shared/diagnostics.js";
 
 export async function handleSendSelected(options = {}) {
   if (state.isSending) {
+    diagnosticLog("compare.send", "ignored-while-sending");
     return;
   }
 
@@ -27,17 +29,24 @@ export async function handleSendSelected(options = {}) {
   const query = getQuery();
 
   if (!query) {
+    diagnosticLog("compare.send", "empty-query");
     setGlobalStatus("请输入问题后再发送。", true);
     return;
   }
 
   const selectedSites = getSelectedSites();
   if (selectedSites.length === 0) {
+    diagnosticLog("compare.send", "no-selected-sites");
     setGlobalStatus("没有可发送的站点。", true);
     return;
   }
 
   state.isSending = true;
+  diagnosticLog("compare.send", "start", {
+    selectedCount: selectedSites.length,
+    siteIds: selectedSites.map((site) => site.id),
+    query,
+  });
 
   try {
     lockContainerScroll();
@@ -45,20 +54,7 @@ export async function handleSendSelected(options = {}) {
     setGlobalStatus(`正在向 ${selectedSites.length} 个站点分发问题...`);
 
     if (state.lastSearchQuery) {
-      try {
-        const prevResponses = await quickCaptureAllResponses();
-        state.sessionSnapshots.push({
-          query: state.lastSearchQuery,
-          time: state.lastSearchTime,
-          responses: prevResponses
-        });
-        // 超过上限则丢弃最旧的快照，防止长会话内存无限增长。
-        if (state.sessionSnapshots.length > SESSION_SNAPSHOTS_MAX) {
-          state.sessionSnapshots = state.sessionSnapshots.slice(-SESSION_SNAPSHOTS_MAX);
-        }
-      } catch (_snapErr) {
-        // 快照失败不阻断发送流程
-      }
+      capturePreviousSessionSnapshot(state.lastSearchQuery, state.lastSearchTime, state.sessionVersion);
     }
 
     state.lastSearchQuery = query;
@@ -75,18 +71,43 @@ export async function handleSendSelected(options = {}) {
       updateSendBtnState();
     }
 
-    const historyEntryId = await saveSearchHistory(query, selectedSites);
+    const historyEntryPromise = saveSearchHistory(query, selectedSites).catch(() => null);
     const results = await Promise.all(selectedSites.map((site) => sendSmartToSite(site, query)));
     const successCount = results.filter((item) => item && item.ok).length;
     const failedCount = results.length - successCount;
+    diagnosticLog("compare.send", "complete", { successCount, failedCount, results });
 
+    const historyEntryId = await historyEntryPromise;
     await refreshHistoryEntryUrls(historyEntryId, selectedSites);
     setGlobalStatus(`发送完成：成功 ${successCount} 个，失败 ${failedCount} 个。`, failedCount > 0);
     scheduleScrollUnlock();
   } finally {
     state.isSending = false;
+    diagnosticLog("compare.send", "unlock");
     toggleGlobalButtons(false);
   }
+}
+
+function capturePreviousSessionSnapshot(query, time, sessionVersion) {
+  quickCaptureAllResponses()
+    .then((prevResponses) => {
+      if (state.sessionVersion !== sessionVersion) {
+        return;
+      }
+
+      state.sessionSnapshots.push({
+        query,
+        time,
+        responses: prevResponses
+      });
+      // 超过上限则丢弃最旧的快照，防止长会话内存无限增长。
+      if (state.sessionSnapshots.length > SESSION_SNAPSHOTS_MAX) {
+        state.sessionSnapshots = state.sessionSnapshots.slice(-SESSION_SNAPSHOTS_MAX);
+      }
+    })
+    .catch(() => {
+      // 快照失败不阻断发送流程
+    });
 }
 
 export async function maybeAutoSendFromUrl() {
@@ -108,6 +129,7 @@ export async function maybeAutoSendFromUrl() {
 export async function sendSmartToSite(site, query) {
   const ref = state.cardRefs.get(site.id);
   if (!ref || !ref.iframeEl) {
+    diagnosticLog("compare.site", "missing-iframe", { site });
     return {
       ok: false,
       siteId: site.id,
@@ -116,10 +138,12 @@ export async function sendSmartToSite(site, query) {
   }
 
   if (site.supportUrlQuery && String(site.url || "").includes("{query}")) {
+    diagnosticLog("compare.site", "url-template-route", { site });
     return navigateByUrlTemplate(ref, query);
   }
 
   if (!ref.loaded) {
+    diagnosticLog("compare.site", "wait-for-iframe-load", { site });
     return new Promise((resolve) => {
       ref.pendingQuery = query;
       ref.pendingQueryResolver = resolve;
@@ -129,6 +153,7 @@ export async function sendSmartToSite(site, query) {
 
   ref.pendingQuery = "";
   ref.pendingQueryResolver = null;
+  diagnosticLog("compare.site", "dispatch-route", { site });
   return dispatchSearchWithRetries(ref, query, 0);
 }
 
@@ -152,6 +177,7 @@ export function navigateByUrlTemplate(ref, query) {
   }
 
   setSiteStatus(ref.site.id, "正在通过 URL 直达搜索结果页...");
+  diagnosticLog("compare.url", "navigate-start", { site: ref.site, targetUrl });
 
   return new Promise((resolve) => {
     const timeoutMs = 12000;
@@ -168,6 +194,7 @@ export function navigateByUrlTemplate(ref, query) {
       }
       done = true;
       cleanup();
+      diagnosticLog("compare.url", "navigate-finish", { site: ref.site, result });
       resolve(result);
     };
 
@@ -206,6 +233,7 @@ export function navigateByUrlTemplate(ref, query) {
 
 export function dispatchSearchWithRetries(ref, query, initialDelayMs) {
   const requestId = createRequestId();
+  diagnosticLog("compare.dispatch", "created", { site: ref.site, requestId, query });
 
   return new Promise((resolve) => {
     const pendingDispatch = {
@@ -236,6 +264,11 @@ export function scheduleDispatchAttempt(pendingDispatch, delayMs) {
     pendingDispatch.attempts += 1;
 
     if (!pendingDispatch.ref.iframeEl?.contentWindow) {
+      diagnosticLog("compare.dispatch", "missing-content-window", {
+        site: pendingDispatch.ref.site,
+        requestId: pendingDispatch.requestId,
+        attempt: pendingDispatch.attempts,
+      });
       if (pendingDispatch.attempts < pendingDispatch.maxAttempts) {
         scheduleDispatchAttempt(pendingDispatch, pendingDispatch.retryDelayMs);
       } else {
@@ -249,17 +282,19 @@ export function scheduleDispatchAttempt(pendingDispatch, delayMs) {
     }
 
     try {
-      // 跨域 iframe 通信：targetOrigin 优先使用 iframe 当前 src 的 origin（若可解析），否则回退 "*"
-      // （同时依赖 inject.js 的 event.origin/event.source 校验来拒绝非扩展对比页的伪造请求）。
-      let targetOrigin = "*";
-      try {
-        const src = pendingDispatch.ref.iframeEl.src || "";
-        if (src && src !== "about:blank") {
-          targetOrigin = new URL(src).origin;
-        }
-      } catch (_e) {
-        targetOrigin = "*";
-      }
+      // 跨域 iframe 通信：固定使用 "*" 作为 targetOrigin。
+      // 原因：Kimi（www.kimi.com → kimi.com）、通义（www.qianwen.com → chat.qwen.ai）
+      // 等站点在 iframe 内会发生跨 origin 重定向，若使用初始 src 的 origin 做 targetOrigin，
+      // 浏览器会静默丢弃 postMessage，inject.js 永远收不到 QSHOT_SEARCH，输入框始终为空。
+      // 安全性由 inject.js 接收端的 event.origin===EXTENSION_ORIGIN 校验保证，
+      // 发送端使用 "*" 不降低安全等级，仅意味着查询文本对 iframe 内其他 message 监听器可见
+      // （而 iframe 本身是用户已登录的 AI 站点，属可信范围）。
+      const targetOrigin = "*";
+      diagnosticLog("compare.dispatch", "post-message", {
+        site: pendingDispatch.ref.site,
+        requestId: pendingDispatch.requestId,
+        attempt: pendingDispatch.attempts,
+      });
       pendingDispatch.ref.iframeEl.contentWindow.postMessage(
         {
           type: "QSHOT_SEARCH",
@@ -272,6 +307,12 @@ export function scheduleDispatchAttempt(pendingDispatch, delayMs) {
       setSiteStatus(pendingDispatch.ref.site.id, "查询已发送到卡片 iframe，等待页面响应...");
       restoreLockedScrollPosition();
     } catch (error) {
+      diagnosticLog("compare.dispatch", "post-message-error", {
+        site: pendingDispatch.ref.site,
+        requestId: pendingDispatch.requestId,
+        attempt: pendingDispatch.attempts,
+        error: error.message,
+      });
       if (pendingDispatch.attempts < pendingDispatch.maxAttempts) {
         scheduleDispatchAttempt(pendingDispatch, pendingDispatch.retryDelayMs);
       } else {
@@ -294,6 +335,25 @@ export function scheduleDispatchAttemptFailure(pendingDispatch) {
       return;
     }
 
+    if (pendingDispatch.attempts < pendingDispatch.maxAttempts) {
+      diagnosticLog("compare.dispatch", "retry", {
+        site: pendingDispatch.ref.site,
+        requestId: pendingDispatch.requestId,
+        nextAttempt: pendingDispatch.attempts + 1,
+      });
+      setSiteStatus(
+        pendingDispatch.ref.site.id,
+        `自动发送暂未响应，正在重试 ${pendingDispatch.attempts + 1}/${pendingDispatch.maxAttempts}...`
+      );
+      scheduleDispatchAttempt(pendingDispatch, 0);
+      return;
+    }
+
+    diagnosticLog("compare.dispatch", "timeout", {
+      site: pendingDispatch.ref.site,
+      requestId: pendingDispatch.requestId,
+      attempts: pendingDispatch.attempts,
+    });
     finalizePendingDispatch(pendingDispatch.requestId, {
       ok: false,
       siteId: pendingDispatch.ref.site.id,
@@ -305,9 +365,15 @@ export function scheduleDispatchAttemptFailure(pendingDispatch) {
 export function resolvePendingDispatch(requestId, payload) {
   const pendingDispatch = state.pendingDispatches.get(requestId);
   if (!pendingDispatch || pendingDispatch.completed) {
+    diagnosticLog("compare.dispatch", "resolve-miss", { requestId, payload });
     return;
   }
 
+  diagnosticLog("compare.dispatch", "resolve", {
+    site: pendingDispatch.ref.site,
+    requestId,
+    payload,
+  });
   finalizePendingDispatch(requestId, payload);
 }
 
@@ -323,6 +389,11 @@ export function finalizePendingDispatch(requestId, result) {
   }
   state.pendingDispatches.delete(requestId);
   restoreLockedScrollPosition();
+  diagnosticLog("compare.dispatch", "finalize", {
+    site: pendingDispatch.ref.site,
+    requestId,
+    result,
+  });
   pendingDispatch.resolve(result);
 }
 
@@ -331,6 +402,7 @@ export function finalizePendingDispatch(requestId, result) {
 // 2) 如果 sendSmartToSite 在等待 iframe 加载完（pendingQueryResolver 未执行），也一并 resolve，
 //    避免 handleSendSelected 里的 Promise.all 永不完成、state.isSending 卡在 true。
 export function abortPendingWorkForSite(siteId) {
+  diagnosticLog("compare.dispatch", "abort-site", { siteId });
   const toCancel = [];
   state.pendingDispatches.forEach((pending, requestId) => {
     if (pending?.ref?.site?.id === siteId) {

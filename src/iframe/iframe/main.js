@@ -297,6 +297,7 @@ function bindEvents() {
     //   - lastSearchQuery / lastSearchTime：上次问题元信息，清掉避免导出标题显示陈旧问题
     // 搜索历史（state.searchHistory）是持久化的用户资产，不在此清理。
     state.sessionSnapshots = [];
+    state.sessionVersion += 1;
     state.lastSearchQuery = null;
     state.lastSearchTime = null;
     state.currentHistoryEntryId = null;

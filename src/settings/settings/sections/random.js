@@ -3,14 +3,17 @@ import { state, msg } from "../state.js";
 import { escapeHtml } from "../utils.js";
 import { createOtherSettingToggle } from "./other.js";
 
-export async function loadDefaultRandomQuestionsText() {
-  const lang = (() => {
+export async function loadDefaultRandomQuestionsText(preferredLang = "") {
+  const lang = String(preferredLang || (() => {
     try {
-      return (chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
+      const chromeLang = (chrome?.i18n?.getUILanguage?.() || "").toLowerCase();
+      if (chromeLang) return chromeLang;
+      const navLang = (navigator?.language || "").toLowerCase();
+      return navLang || "";
     } catch (_e) {
       return (navigator.language || "").toLowerCase();
     }
-  })();
+  })()).toLowerCase();
   const path = lang.startsWith("zh") ? RANDOM_QUESTIONS_FILES.zh : RANDOM_QUESTIONS_FILES.en;
   try {
     const res = await fetch(chrome.runtime.getURL(path));

@@ -35,13 +35,13 @@ export function showPromptHoverCard(prompt, group, anchorBtn) {
   const copyBtn = document.createElement("button");
   copyBtn.type = "button";
   copyBtn.className = "prompt-hover-card-copy-btn";
-  copyBtn.textContent = "复制";
+  copyBtn.textContent = msg("common_copy", "复制");
   copyBtn.addEventListener("click", () => {
     navigator.clipboard.writeText(prompt.content || "").then(() => {
-      copyBtn.textContent = "✓ 已复制";
+      copyBtn.textContent = "✓ " + msg("common_copied", "已复制");
       copyBtn.classList.add("is-copied");
       setTimeout(() => {
-        copyBtn.textContent = "复制";
+        copyBtn.textContent = msg("common_copy", "复制");
         copyBtn.classList.remove("is-copied");
       }, 1800);
     }).catch(() => {
@@ -52,15 +52,15 @@ export function showPromptHoverCard(prompt, group, anchorBtn) {
       ta.select();
       document.execCommand("copy");
       ta.remove();
-      copyBtn.textContent = "✓ 已复制";
-      setTimeout(() => { copyBtn.textContent = "复制"; }, 1800);
+      copyBtn.textContent = "✓ " + msg("common_copied", "已复制");
+      setTimeout(() => { copyBtn.textContent = msg("common_copy", "复制"); }, 1800);
     });
   });
 
   const editBtn = document.createElement("button");
   editBtn.type = "button";
   editBtn.className = "prompt-hover-card-edit-btn";
-  editBtn.textContent = "编辑";
+  editBtn.textContent = msg("common_edit", "编辑");
   editBtn.addEventListener("click", () => {
     closeCard();
     state.promptEditorState = {
@@ -79,7 +79,7 @@ export function showPromptHoverCard(prompt, group, anchorBtn) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "prompt-hover-card-close-btn";
-  closeBtn.setAttribute("aria-label", "关闭");
+  closeBtn.setAttribute("aria-label", msg("common_close", "关闭"));
   closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
   closeBtn.addEventListener("click", closeCard);
 
@@ -160,7 +160,10 @@ export function createPromptEditorModal() {
   }
 
   const editorState = state.promptEditorState;
-  const editorGroup = state.promptGroups.find((group) => group.id === editorState.groupId) || state.promptGroups[0];
+  const editorGroup =
+    state.promptGroups.find((group) => group.id === editorState.groupId && !isAllPromptGroup(group)) ||
+    state.promptGroups.find((group) => !isAllPromptGroup(group)) ||
+    state.promptGroups[0];
   const overlay = document.createElement("div");
   overlay.className = "prompt-editor-overlay";
 
@@ -175,7 +178,7 @@ export function createPromptEditorModal() {
     <div class="prompt-editor-field">
       <label class="field-label">${msg("settings_prompts_fieldGroup", "分类")}</label>
       <select class="prompt-editor-group-select">
-        ${state.promptGroups.map((group) => `<option value="${escapeHtml(group.id)}" ${group.id === editorGroup.id ? "selected" : ""}>${escapeHtml(isAllPromptGroup(group) ? getAllPromptGroupName() : group.name)}</option>`).join("")}
+        ${state.promptGroups.filter((group) => !isAllPromptGroup(group)).map((group) => `<option value="${escapeHtml(group.id)}" ${group.id === editorGroup.id ? "selected" : ""}>${escapeHtml(group.name)}</option>`).join("")}
         <option value="__new_group__">${msg("settings_prompts_newGroupOption", "＋ 新建分组…")}</option>
       </select>
       <div class="prompt-new-group-row" hidden>
@@ -284,17 +287,29 @@ export function createPromptEditorModal() {
         return;
       }
 
+      let originalGroup = null;
+      let originalIndex = -1;
       if (state.promptEditorState.mode === "edit") {
         state.promptGroups.forEach((group) => {
+          const promptIndex = group.prompts.findIndex((prompt) => prompt.id === state.promptEditorState.promptId);
+          if (promptIndex >= 0) {
+            originalGroup = group;
+            originalIndex = promptIndex;
+          }
           group.prompts = group.prompts.filter((prompt) => prompt.id !== state.promptEditorState.promptId);
         });
       }
 
-      targetGroup.prompts.push({
+      const nextPrompt = {
         id: state.promptEditorState.promptId || `prompt-${Date.now()}`,
         title: state.promptEditorState.title || msg("overlay_unnamedPrompt", "未命名提示词"),
         content: state.promptEditorState.content || ""
-      });
+      };
+      if (state.promptEditorState.mode === "edit" && originalGroup === targetGroup && originalIndex >= 0) {
+        targetGroup.prompts.splice(Math.min(originalIndex, targetGroup.prompts.length), 0, nextPrompt);
+      } else {
+        targetGroup.prompts.unshift(nextPrompt);
+      }
       state.activePromptGroupId = targetGroup.id;
       state.promptEditorState = null;
       await persistAll();
@@ -304,17 +319,15 @@ export function createPromptEditorModal() {
 
   const deleteBtn = modal.querySelector(".prompt-editor-delete-btn");
   if (deleteBtn) {
-    deleteBtn.addEventListener("click", async () => {
-      const shouldDelete = window.confirm(msg("settings_prompts_deletePromptConfirm", "是否要删除该提示词？"));
-      if (!shouldDelete) {
-        return;
-      }
-      state.promptGroups.forEach((group) => {
-        group.prompts = group.prompts.filter((prompt) => prompt.id !== state.promptEditorState.promptId);
+    deleteBtn.addEventListener("click", () => {
+      showPromptDeleteConfirm(async () => {
+        state.promptGroups.forEach((group) => {
+          group.prompts = group.prompts.filter((prompt) => prompt.id !== state.promptEditorState.promptId);
+        });
+        state.promptEditorState = null;
+        await persistAll();
+        state.renderPromptsSection();
       });
-      state.promptEditorState = null;
-      await persistAll();
-      state.renderPromptsSection();
     });
   }
 
@@ -327,4 +340,46 @@ export function createPromptEditorModal() {
 
   overlay.appendChild(modal);
   return overlay;
+}
+
+function showPromptDeleteConfirm(onConfirm) {
+  document.querySelector(".prompt-delete-confirm-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "prompt-delete-confirm-overlay";
+  overlay.innerHTML = `
+    <div class="prompt-delete-confirm-dialog" role="dialog" aria-modal="true">
+      <div class="prompt-delete-confirm-title">${msg("settings_prompts_deletePromptTitle", "删除提示词")}</div>
+      <div class="prompt-delete-confirm-message">${msg("settings_prompts_deletePromptConfirm", "是否要删除该提示词？")}</div>
+      <div class="prompt-delete-confirm-actions">
+        <button class="prompt-delete-confirm-cancel" type="button">${msg("common_cancel", "取消")}</button>
+        <button class="prompt-delete-confirm-submit" type="button">${msg("common_delete", "删除")}</button>
+      </div>
+    </div>
+  `;
+
+  const close = () => {
+    document.removeEventListener("keydown", handleKeydown);
+    overlay.remove();
+  };
+  const handleKeydown = (event) => {
+    if (event.key === "Escape") {
+      close();
+    }
+  };
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      close();
+    }
+  });
+  overlay.querySelector(".prompt-delete-confirm-cancel")?.addEventListener("click", close);
+  overlay.querySelector(".prompt-delete-confirm-submit")?.addEventListener("click", async () => {
+    await onConfirm();
+    close();
+  });
+
+  document.addEventListener("keydown", handleKeydown);
+  document.body.appendChild(overlay);
+  overlay.querySelector(".prompt-delete-confirm-submit")?.focus();
 }

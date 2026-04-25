@@ -74,9 +74,10 @@ export function parseRequestedSiteIds(rawValue) {
   const siteIds = rawValue
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((id, index, list) => list.indexOf(id) === index);
 
-  return siteIds.length > 0 ? new Set(siteIds) : null;
+  return siteIds.length > 0 ? siteIds : null;
 }
 
 export function normalizePromptGroups(source) {

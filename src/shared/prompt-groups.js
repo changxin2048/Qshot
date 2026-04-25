@@ -2,7 +2,7 @@ import { DEFAULT_PROMPT_GROUP_ID } from "./storage-keys.js";
 
 function i18n(key) {
   try {
-    return chrome?.i18n?.getMessage?.(key) || "";
+    return chrome?.i18n?.getMessage?.(key) || window.__QSHOT_I18N__?.t?.(key) || "";
   } catch (_e) {
     return "";
   }

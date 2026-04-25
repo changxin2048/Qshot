@@ -3,7 +3,7 @@ const BASE = `
   :host {
     all: initial;
     --qshot-panel-scale: 1.167;
-    --qshot-panel-offset-y: -12px;
+    --qshot-panel-offset-y: -80px;
   }
   * { box-sizing: border-box; font-family: "Microsoft YaHei UI", "PingFang SC", -apple-system, sans-serif; }
   .backdrop {
@@ -19,7 +19,7 @@ const BASE = `
     animation: qshotFadeIn 140ms ease-out;
   }
   .panel {
-    width: 440px;
+    width: 420px;
     max-width: calc(100vw - 32px);
     background: #ffffff;
     border-radius: 14px;
@@ -28,8 +28,6 @@ const BASE = `
     display: flex;
     flex-direction: column;
     gap: 14px;
-    animation: qshotPopIn 180ms cubic-bezier(.2,.9,.3,1.1) forwards;
-    transform: translateY(var(--qshot-panel-offset-y)) scale(var(--qshot-panel-scale));
     color: #111;
   }
   @keyframes qshotFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -67,12 +65,18 @@ const BASE = `
     gap: 10px;
     transition: min-height 180ms ease, padding 180ms ease;
   }
+  .composer.is-mid-expanded,
   .composer.is-expanded {
-    min-height: 118px;
     padding: 12px 14px;
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+  .composer.is-mid-expanded {
+    min-height: 82px;
+  }
+  .composer.is-expanded {
+    min-height: 118px;
   }
   .query-input {
     width: 100%;
@@ -92,6 +96,12 @@ const BASE = `
     color: #111;
     flex: 1;
   }
+  .composer.is-mid-expanded .query-input {
+    min-height: 40px;
+    height: auto;
+    overflow-y: hidden;
+    padding: 2px 4px 0 0;
+  }
   .composer.is-expanded .query-input {
     min-height: 76px;
     height: auto;
@@ -108,6 +118,7 @@ const BASE = `
     gap: 10px;
     flex: none;
   }
+  .composer.is-mid-expanded .actions-row,
   .composer.is-expanded .actions-row { margin-top: 8px; }
   .icon-btn {
     width: 24px;
@@ -424,6 +435,8 @@ const PICKER = `
     flex-direction: column;
     align-items: center;
     gap: 10px;
+    animation: qshotPopIn 180ms cubic-bezier(.2,.9,.3,1.1) forwards;
+    transform: translateY(var(--qshot-panel-offset-y)) scale(var(--qshot-panel-scale));
   }
   .hint-row {
     display: flex;
@@ -445,10 +458,10 @@ const PICKER = `
   .panel { position: relative; }
   .settings-corner-btn {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 26px;
-    height: 26px;
+    bottom: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
     padding: 0;
     border: none;
     border-radius: 50%;
@@ -466,8 +479,8 @@ const PICKER = `
     transform: rotate(30deg);
   }
   .settings-corner-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     display: block;
     flex-shrink: 0;
   }

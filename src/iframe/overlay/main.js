@@ -420,10 +420,13 @@ function syncComposerLayout() {
   const queryInput = state.shadowRoot.querySelector(".query-input");
   if (!composer || !queryInput) return;
 
-  composer.classList.remove("is-expanded");
+  composer.classList.remove("is-mid-expanded", "is-expanded");
   queryInput.style.height = "0px";
   const scrollH = queryInput.scrollHeight;
   const lineHeight = parseFloat(getComputedStyle(queryInput).lineHeight || "20");
   queryInput.style.height = "";
-  composer.classList.toggle("is-expanded", scrollH > lineHeight * 1.7);
+  const shouldExpand = scrollH > lineHeight * 2.7;
+  const shouldMidExpand = !shouldExpand && scrollH > lineHeight * 1.7;
+  composer.classList.toggle("is-mid-expanded", shouldMidExpand);
+  composer.classList.toggle("is-expanded", shouldExpand);
 }

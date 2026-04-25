@@ -39,6 +39,7 @@ const SRC_ASSETS = [
   "popup/logo.svg",
   "settings/settings.html",
   "settings/settings.css",
+  "settings/styles",
   "settings/about-logo.svg",
   "iframe/iframe.html",
   "iframe/iframe.css",

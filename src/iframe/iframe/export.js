@@ -1,6 +1,8 @@
 import { state, SITE_CATEGORIES } from "./state.js";
 import { escapeHtml, createRequestId, normalizeQueryForMatch } from "./utils.js";
 
+const EXTRACT_TIMEOUT_MS = 2500;
+
 export function showExportModal() {
   const existing = document.getElementById("exportModal");
   if (existing) {
@@ -50,6 +52,7 @@ export function showExportModal() {
   document.body.appendChild(modal);
 
   const siteList = modal.querySelector(".export-site-list");
+  let isExporting = false;
 
   if (exportableRefs.length === 0) {
     const empty = document.createElement("div");
@@ -87,7 +90,10 @@ export function showExportModal() {
     });
   });
 
-  const closeModal = () => {
+  const closeModal = (force = false) => {
+    if (isExporting && !force) {
+      return;
+    }
     modal.remove();
   };
 
@@ -99,13 +105,39 @@ export function showExportModal() {
     }
   });
 
-  modal.querySelector(".export-confirm-btn").addEventListener("click", async () => {
-    const responses = await collectVisibleResponses(selectedSiteIds);
-    const content = generateExportContent(responses, selectedFormat, selectedSiteIds);
-    const extension = selectedFormat === "markdown" ? "md" : selectedFormat;
-    const mimeType = selectedFormat === "html" ? "text/html" : "text/plain";
-    downloadFile(content, buildExportFilename(extension), mimeType);
-    closeModal();
+  const confirmBtn = modal.querySelector(".export-confirm-btn");
+  const cancelBtn = modal.querySelector(".export-cancel-btn");
+  const noticeEl = modal.querySelector(".export-notice");
+
+  confirmBtn.addEventListener("click", async () => {
+    if (isExporting) {
+      return;
+    }
+    if (selectedSiteIds.size === 0) {
+      noticeEl.textContent = "请至少选择一个要导出的 AI 模型。";
+      return;
+    }
+
+    isExporting = true;
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true;
+    confirmBtn.textContent = "正在导出...";
+    noticeEl.textContent = `正在读取 ${selectedSiteIds.size} 个卡片内容，请稍候...`;
+
+    try {
+      const responses = await collectVisibleResponses(selectedSiteIds);
+      const content = generateExportContent(responses, selectedFormat, selectedSiteIds);
+      const extension = selectedFormat === "markdown" ? "md" : selectedFormat;
+      const mimeType = selectedFormat === "html" ? "text/html" : "text/plain";
+      downloadFile(content, buildExportFilename(extension), mimeType);
+      closeModal(true);
+    } catch (error) {
+      isExporting = false;
+      confirmBtn.disabled = false;
+      cancelBtn.disabled = false;
+      confirmBtn.textContent = "导出";
+      noticeEl.textContent = `导出失败：${error.message || "未知错误"}`;
+    }
   });
 
 }
@@ -135,16 +167,11 @@ export async function quickCaptureAllResponses() {
 }
 
 export async function collectVisibleResponses(selectedSiteIds = null) {
-  const responses = [];
-  for (const [siteId, ref] of state.cardRefs.entries()) {
-    if (selectedSiteIds && !selectedSiteIds.has(siteId)) {
-      continue;
-    }
+  const refs = Array.from(state.cardRefs.entries())
+    .filter(([siteId]) => !selectedSiteIds || selectedSiteIds.has(siteId))
+    .map(([, ref]) => ref);
 
-    const response = await collectResponseForSite(ref);
-    responses.push(response);
-  }
-  return responses;
+  return Promise.all(refs.map((ref) => collectResponseForSite(ref)));
 }
 
 export async function collectResponseForSite(ref) {
@@ -184,6 +211,8 @@ export function extractFallbackContent(ref) {
 export function requestIframeContent(iframe, site) {
   return new Promise((resolve) => {
     const requestId = createRequestId();
+    let completed = false;
+    let timeoutId = null;
     // Review note (CWS/Edge Add-ons):
     // - We only request readable text from the card iframe when the user triggers Export/Summary actions.
     // - We bind replies to the specific iframe via event.source to prevent other iframes from spoofing responses and polluting exported content.
@@ -191,6 +220,18 @@ export function requestIframeContent(iframe, site) {
     // 为什么不在 handler 里每次读 iframe.contentWindow：iframe 被 detach 后它会变 null，
     // 那样任何 event.source 都会 !== null 而通过校验，反而变成"零校验"。
     const expectedWindow = iframe.contentWindow;
+
+    const finish = (result) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      window.removeEventListener("message", handler);
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      resolve(result);
+    };
 
     const handler = (event) => {
       // ── 安全校验：只接受来自本次提取目标 iframe 的回执 ──
@@ -203,8 +244,7 @@ export function requestIframeContent(iframe, site) {
         return;
       }
 
-      window.removeEventListener("message", handler);
-      resolve({
+      finish({
         siteName: site.name,
         content: cleanExtractedContent(event.data.content || ""),
         turns: Array.isArray(event.data.turns) ? event.data.turns : null,
@@ -215,25 +255,16 @@ export function requestIframeContent(iframe, site) {
     window.addEventListener("message", handler);
 
     try {
-      // 跨域 iframe 通信：targetOrigin 优先使用 iframe 当前 src 的 origin（若可解析），否则回退 "*"
-      // （同时依赖 event.source 校验来保证回执来源正确）。
-      let targetOrigin = "*";
-      try {
-        const src = iframe.src || "";
-        if (src && src !== "about:blank") {
-          targetOrigin = new URL(src).origin;
-        }
-      } catch (_e) {
-        targetOrigin = "*";
-      }
+      // 站点 iframe 经常会跨 origin 重定向（例如入口域名跳到登录/对话域名）。
+      // 使用 "*" 避免 targetOrigin 过期导致消息被静默丢弃；回包仍用 event.source + requestId 校验。
+      const targetOrigin = "*";
       iframe.contentWindow.postMessage({
         type: "QSHOT_EXTRACT",
         requestId,
         site
       }, targetOrigin);
     } catch (_error) {
-      window.removeEventListener("message", handler);
-      resolve({
+      finish({
         siteName: site.name,
         content: "暂未提取到内容",
         turns: null,
@@ -242,15 +273,14 @@ export function requestIframeContent(iframe, site) {
       return;
     }
 
-    window.setTimeout(() => {
-      window.removeEventListener("message", handler);
-      resolve({
+    timeoutId = window.setTimeout(() => {
+      finish({
         siteName: site.name,
         content: "暂未提取到内容",
         turns: null,
         url: site.url
       });
-    }, 5000);
+    }, EXTRACT_TIMEOUT_MS);
   });
 }
 

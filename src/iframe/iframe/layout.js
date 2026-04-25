@@ -5,16 +5,61 @@ import { setGlobalStatus } from "./status.js";
 // 激活滚动守卫：在 iframe 加载 / 自动发送期间，锁定容器滚动位置，
 // 防止 iframe 内部输入框 focus() 导致的祖先容器"对齐可视区"抖动。
 export function activateScrollGuard(left, top, durationMs) {
+  const container = elements.iframesContainer;
+
   state.scrollGuardActive = true;
   state.scrollGuardLeft = left;
   state.scrollGuardTop = top;
-  if (state._scrollGuardTimerId) {
-    window.clearTimeout(state._scrollGuardTimerId);
+  container?.classList.add("is-scroll-guarded");
+  if (state.scrollGuardTimerId) {
+    window.clearTimeout(state.scrollGuardTimerId);
   }
-  state._scrollGuardTimerId = window.setTimeout(() => {
-    state.scrollGuardActive = false;
-    state._scrollGuardTimerId = null;
+
+  startScrollGuardLoop();
+
+  state.scrollGuardTimerId = window.setTimeout(() => {
+    stopScrollGuard();
   }, Math.max(1000, durationMs | 0));
+}
+
+function startScrollGuardLoop() {
+  if (state.scrollGuardRafId) {
+    return;
+  }
+
+  const tick = () => {
+    const container = elements.iframesContainer;
+    if (!state.scrollGuardActive || !container) {
+      state.scrollGuardRafId = null;
+      return;
+    }
+
+    if (!state.userIsScrolling) {
+      if (container.scrollLeft !== state.scrollGuardLeft) {
+        container.scrollLeft = state.scrollGuardLeft;
+      }
+      if (container.scrollTop !== state.scrollGuardTop) {
+        container.scrollTop = state.scrollGuardTop;
+      }
+    }
+
+    state.scrollGuardRafId = window.requestAnimationFrame(tick);
+  };
+
+  state.scrollGuardRafId = window.requestAnimationFrame(tick);
+}
+
+export function stopScrollGuard() {
+  state.scrollGuardActive = false;
+  if (state.scrollGuardTimerId) {
+    window.clearTimeout(state.scrollGuardTimerId);
+    state.scrollGuardTimerId = null;
+  }
+  if (state.scrollGuardRafId) {
+    window.cancelAnimationFrame(state.scrollGuardRafId);
+    state.scrollGuardRafId = null;
+  }
+  elements.iframesContainer?.classList.remove("is-scroll-guarded");
 }
 
 // 根据卡片数量估算守卫时长：错峰加载 120ms/个 + 重型 SPA 冷启动需要的稳定时间。

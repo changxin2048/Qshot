@@ -1,6 +1,6 @@
-# Qshot — Claude 协作指南
+# Qshot — 协作指南
 
-> 给 Claude 和后续贡献者：这份文档解释项目结构、怎么跑起来、怎么调试、怎么发布。
+> 给 AI 和后续贡献者：这份文档解释项目结构、怎么跑起来、怎么调试、怎么发布。
 
 ## 项目简介
 
@@ -9,41 +9,138 @@
 - **多 AI 批量搜索**：在一个查询页里同时调用多个 AI 站点（Kimi、Gemini、DeepSeek 等），结果并排展示
 - **快速站点跳转**：popup 里一键进入收藏站点
 - **悬浮层**：任意页面按 `Ctrl+Q` 唤起全局搜索浮层
+- esbuild 构建打包。
 
 ## 仓库结构
 
+### 顶层
+
 ```
 D:\Qshot-1.1.1\
-├── src/                 ← 唯一源码目录（所有会打包进扩展的文件）
-│   ├── manifest.json
-│   ├── icons/
-│   ├── background.js
-│   ├── config/          ← baseConfig.js + 静态 json
-│   ├── iframe/          ← content script + compare 页
-│   │   ├── inject.js    (入口，re-export src/iframe/inject/main.js)
-│   │   ├── inject/      (7 个拆分模块)
-│   │   ├── overlay.js   (入口)
-│   │   ├── overlay/     (6 个模块 + styles.js)
-│   │   ├── overlay_main.js
-│   │   ├── iframe.js    (入口)
-│   │   ├── iframe/      (13 个模块)
-│   │   ├── iframe.html / iframe.css
-│   ├── popup/           ← toolbar popup
-│   ├── settings/        ← 选项页（拆成 sections/*）
-│   └── shared/          ← 跨入口共享模块（i18n、storage-keys 等）
-│
-├── dist/                ← 构建产物，.gitignore，加载扩展时指向这里
-├── build.mjs            ← esbuild 脚本
-├── package.json
-├── manifest? NO — 已迁入 src/
-│
-├── README.md            ← 面向用户（GitHub 首页）
-├── LICENSE              ← 开源协议（构建时复制进 dist/）
-├── PRIVACY.md           ← 隐私政策（构建时复制进 dist/）
-└── CLAUDE.md            ← 本文件
+├── src/                    ← 唯一源码目录（详见下）
+├── dist/                   ← 构建产物，.gitignore，加载扩展时指向这里
+├── build.mjs               ← esbuild 打包脚本（含资源复制）
+├── package.json / package-lock.json
+├── README.md               ← 面向用户（GitHub 首页展示）
+├── LICENSE                 ← 开源协议（构建时复制进 dist/）
+├── PRIVACY.md              ← 隐私政策（构建时复制进 dist/）
+├── CLAUDE.md               ← 本文件
+└── .gitignore              ← 忽略 dist/、node_modules/、_metadata/ 等
 ```
 
-**规则**：根目录只放仓库元信息。所有会被打包进 Chrome 扩展的内容都在 `src/`。构建产物 `dist/` 不进 git。
+**规则**：根目录只放仓库元信息。所有会打包进扩展的内容都在 `src/`。
+
+### `src/` 详细
+
+```
+src/
+│
+├── manifest.json           ← Chrome 扩展清单（entry point 声明）
+│
+├── icons/                  ← 扩展图标（16/32/48/128）
+│
+├── config/                 ← 运行时配置（JSON 资源 + 常量）
+│   ├── baseConfig.js           content_script，注入基础常量到 window
+│   ├── initialState.json       首次安装时写入 storage 的默认数据
+│   ├── rules.json              declarativeNetRequest 规则（去 X-Frame 等）
+│   └── siteHandlers.json       AI 站点适配表（search handler / 匹配模式）
+│                               通过 web_accessible_resources 暴露
+│
+├── background.js           ← service worker 入口
+│                             管理 compare tab、消息路由、预热、命令
+│
+├── iframe/                 ← content scripts + compare 页 UI
+│   │
+│   ├── inject.js               入口（re-export ./inject/main.js）
+│   ├── inject/                 注入到所有 <all_urls> 的业务逻辑
+│   │   ├── main.js                 初始化 + 消息监听
+│   │   ├── constants.js            扩展 origin、消息类型
+│   │   ├── dom-utils.js            DOM 辅助
+│   │   ├── executor.js             按站点 handler 执行搜索
+│   │   ├── editors.js              站点富文本编辑器适配
+│   │   ├── extractor.js            从页面抽取回答内容（截图 / 复制）
+│   │   └── sidebar-fix.js          嵌入 iframe 时修正站点侧边栏
+│   │
+│   ├── overlay_main.js         MAIN world 的小钩子（读取页面全局变量）
+│   │
+│   ├── overlay.js              入口（re-export ./overlay/main.js）
+│   ├── overlay/                全局悬浮搜索层（Ctrl+Q 唤起）
+│   │   ├── main.js                 UI 装载 + 事件绑定
+│   │   ├── constants.js            常量 / 随机问题文件路径
+│   │   ├── state.js                运行时状态
+│   │   ├── styles.js               悬浮层 CSS（字符串形式注入 shadow DOM）
+│   │   ├── groups-panel.js         站点分组面板
+│   │   ├── history-panel.js        历史记录面板
+│   │   └── prompts-panel.js        提示词 / 随机问题面板
+│   │
+│   ├── iframe.html / iframe.css    compare 页的外壳
+│   │
+│   ├── iframe.js               入口（re-export ./iframe/main.js）
+│   └── iframe/                 compare 页的多站点并排视图
+│       ├── main.js                 页面装载 + 总协调
+│       ├── state.js                卡片集合、布局偏好、正在加载的站点
+│       ├── layout.js               网格 / 列数自适应
+│       ├── sites-loader.js         从 storage + 内置表加载站点
+│       ├── cards-render.js         渲染每张站点卡片
+│       ├── load-queue.js           并发控制：限速依次打开 iframe
+│       ├── send.js                 查询分发到每个子 iframe
+│       ├── history.js              本次会话历史
+│       ├── prompts.js              提示词面板
+│       ├── add-site.js             "添加站点" 弹层
+│       ├── export.js               截图 / 导出
+│       ├── status.js               顶部状态栏
+│       └── utils.js                共用小函数
+│
+├── popup/                  ← toolbar 按钮点开的弹窗
+│   ├── popup.html / popup.css
+│   ├── popup.js                入口（初始化 + storage 监听）
+│   ├── state.js                state 单例 + 工具函数
+│   ├── sections.js             历史、分组、提示词、随机问题 UI
+│   ├── prompt-edit-modal.js    提示词编辑弹层
+│   ├── icon128.png / logo.svg
+│
+├── settings/               ← 选项页（options_ui）
+│   ├── settings.html / settings.css / about-logo.svg
+│   ├── settings.js             入口（re-export ./settings/main.js）
+│   └── settings/
+│       ├── main.js                 页面协调 + tab 切换
+│       ├── state.js                全局 state
+│       ├── store.js                读写 chrome.storage
+│       ├── utils.js                辅助
+│       ├── drag.js                 拖拽排序通用模块
+│       ├── import-export.js        JSON 导入 / 导出配置
+│       └── sections/               每个 tab 一个文件
+│           ├── groups.js               搜索分组管理
+│           ├── custom.js               自定义站点
+│           ├── prompts.js              提示词列表
+│           ├── prompts-editor.js       提示词编辑
+│           ├── random.js               随机问题语料
+│           ├── other.js                其他偏好
+│           └── about.js                关于 / 版本
+│
+└── shared/                 ← 跨入口共享模块
+    ├── i18n.js                 语言切换 + 文案字典
+    ├── storage-keys.js         所有 storage key 常量 + 随机问题文件路径表
+    ├── prompt-groups.js        提示词分组的工具函数
+    ├── prompt-item.js          提示词项组件（popup + overlay 共用）
+    └── shortcut.js             快捷键解析 / 匹配
+```
+
+### 入口 → 拆分模块的约定
+
+每个"入口文件"（`popup.js`、`settings.js`、`iframe.js`、`inject.js`、`overlay.js`）只是一层薄壳，import `./<name>/main.js` 启动实际逻辑，然后 `./<name>/` 子目录存放拆开的各个模块。
+
+- 这样做的原因：`build.mjs` 的 `ENTRIES` 是 manifest 认的入口文件名，改成目录不方便；薄壳 + 子目录能让每个文件都 ≤ 500 行，又不动 manifest。
+- 改代码时：**先看入口文件**（知道它指到哪），再看对应 `main.js` + 周边模块。
+
+### `dist/` 的来源
+
+`build.mjs` 做两件事：
+
+1. **esbuild**：把 `ENTRIES` 列出的 JS 入口（上面提到的那些 `*.js`）分别打包成 IIFE，输出到 `dist/` 相同位置
+2. **资源复制**：把 `SRC_ASSETS`（html / css / 图片 / json / manifest / icons）从 `src/` 原样复制到 `dist/`，外加从仓库根拷 `LICENSE` 和 `PRIVACY.md`
+
+`dist/` 的目录结构和 `src/` **几乎一样**，差别只在：JS 是打包后的单文件（没有子目录里的模块源码），额外多了 `LICENSE` 和 `PRIVACY.md`。
 
 ## 开发启动
 
@@ -63,17 +160,16 @@ npm run build
 1. 访问 `chrome://extensions/`
 2. 右上角打开 **开发者模式**
 3. 点 **加载已解压的扩展程序**
-4. 选择 **`D:\Qshot-1.1.1\dist`**（选 `dist/`，不是仓库根）
 
 ## 刷新 / 调试（重要）
 
 改完代码后怎么让 Chrome 看到新版本 —— 根据改动的位置分三种情况：
 
-| 改了哪里 | 步骤 |
-|---|---|
-| `background.js` / popup / settings / compare 页 | watch 自动重建 → `chrome://extensions/` 点 Qshot 卡片的 🔄 刷新图标 → 下次打开 popup/settings 就是新的 |
-| **content script**（`inject.js`、`overlay.js`、`overlay_main.js`）| watch 重建 → 点 🔄 **还不够**。MV3 **不会**把新 content script 注入到已打开的标签页。**必须关闭并重开**目标标签页（点 × 而不是 F5） |
-| 静态资源（html/css/png/svg）| watch 会复制。刷新扩展 + 重开相关页面 |
+| 改了哪里                                                           | 步骤                                                                                                                                |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `background.js` / popup / settings / compare 页                    | watch 自动重建 → `chrome://extensions/` 点 Qshot 卡片的 🔄 刷新图标 → 下次打开 popup/settings 就是新的                              |
+| **content script**（`inject.js`、`overlay.js`、`overlay_main.js`） | watch 重建 → 点 🔄 **还不够**。MV3 **不会**把新 content script 注入到已打开的标签页。**必须关闭并重开**目标标签页（点 × 而不是 F5） |
+| 静态资源（html/css/png/svg）                                       | watch 会复制。刷新扩展 + 重开相关页面                                                                                               |
 
 **调试建议**：
 
@@ -117,14 +213,6 @@ zip 根目录必须直接看到 `manifest.json`（不是 `dist/manifest.json`）
 - `main` — 跟踪 `origin/main`（`30bewater/Qshot` 上游）。只做 merge from upstream 或 PR 合并。
 - `dev` — 本地开发分支，基于 `main` 线性演进。所有功能开发、bug 修复都在 dev 上。
 
-未来发 PR 到上游：
-```bash
-# 在 GitHub 上 Fork → 本地加 remote
-git remote add myfork https://github.com/<你>/Qshot.git
-git push myfork dev
-# 然后在 GitHub 页面上发 PR，base=30bewater/Qshot:main，head=<你>:dev
-```
-
 ## 已知踩坑 & 设计决策
 
 1. **`all_frames: true` 的陷阱**：content script 会注入到第三方站点**自己的**内嵌 iframe。此时 `window.parent.origin` 不是扩展，而是站点自身（例如 `https://gemini.google.com`）。如果用严格 `targetOrigin` 做 `postMessage`，会**同步抛错** `Failed to execute 'postMessage' on 'DOMWindow'`。
@@ -140,6 +228,4 @@ git push myfork dev
 ## 给 Claude 的提示
 
 - 改代码前先看对应入口文件（例如改 inject 行为就看 `src/iframe/inject/main.js`），它会 re-export 实际的逻辑模块。
-- 所有提交 author 统一为 `LXG <mail@liuxiaogang.cn>`（如果你帮用户提交）。
-- 不要跨边界修改 `main` 分支的历史，它跟踪上游。
 - 给 content script 加日志时注意：修改后必须**关闭并重开**测试标签页才能看到，刷新扩展页面不够。

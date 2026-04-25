@@ -70,6 +70,7 @@
         "<all_urls>"
       ],
       "js": [
+        "shared/i18n.js",
         "shared/prompt-item.js",
         "iframe/overlay.js"
       ],

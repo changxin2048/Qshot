@@ -29,7 +29,10 @@ function parseRandomQuestionsText(text) {
 async function fetchDefaultRandomQuestionsText() {
   const lang = (() => {
     try {
-      return (chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
+      const chromeLang = (chrome?.i18n?.getUILanguage?.() || "").toLowerCase();
+      if (chromeLang) return chromeLang;
+      const navLang = (navigator?.language || "").toLowerCase();
+      return navLang || "";
     } catch (_e) {
       return (navigator.language || "").toLowerCase();
     }
@@ -46,19 +49,37 @@ async function fetchDefaultRandomQuestionsText() {
 function loadRandomQuestions() {
   if (randomQuestionsPromise) return randomQuestionsPromise;
   randomQuestionsPromise = (async () => {
+    const uiLang = (() => {
+      try {
+        return (chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
+      } catch (_e) {
+        return (navigator.language || "").toLowerCase();
+      }
+    })();
+    const currentDefaultText = await fetchDefaultRandomQuestionsText();
+    const otherPath = uiLang.startsWith("zh") ? RANDOM_QUESTIONS_FILES.en : RANDOM_QUESTIONS_FILES.zh;
+    let otherDefaultText = "";
+    try {
+      const res = await fetch(chrome.runtime.getURL(otherPath));
+      otherDefaultText = res.ok ? await res.text() : "";
+    } catch (_e) {
+      otherDefaultText = "";
+    }
     try {
       const stored = await chrome.storage.local.get([RANDOM_QUESTIONS_STORAGE_KEY]);
       const raw = stored[RANDOM_QUESTIONS_STORAGE_KEY];
       // Legacy default content starts with a # comment block; treat as "not
       // customized" and fall back to the built-in question file.
       const isOldDefault = typeof raw === "string" && raw.trimStart().startsWith("#");
-      if (typeof raw === "string" && !isOldDefault) {
+      const hasCustomText = typeof raw === "string" && raw.trim().length > 0;
+      const isOtherLangDefault = hasCustomText && raw.trim() === otherDefaultText.trim();
+      if (hasCustomText && !isOldDefault && !isOtherLangDefault) {
         return parseRandomQuestionsText(raw);
       }
     } catch (_e) {
       /* fall back to default file */
     }
-    return parseRandomQuestionsText(await fetchDefaultRandomQuestionsText());
+    return parseRandomQuestionsText(currentDefaultText);
   })();
   return randomQuestionsPromise;
 }

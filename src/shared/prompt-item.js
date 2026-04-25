@@ -341,20 +341,33 @@
     eyeBtn.title = '预览';
     eyeBtn.innerHTML = _EYE;
     if (previewManager) {
-      const showPreview = () => {
-        previewManager.cancelHide?.();
-        previewManager.show(eyeBtn, prompt, { onEdit });
+      let showTimer = null;
+      const cancelShow = () => {
+        if (showTimer) { clearTimeout(showTimer); showTimer = null; }
       };
-      const hidePreview = () => previewManager.scheduleHide();
-      eyeBtn.addEventListener('mouseenter', showPreview);
-      eyeBtn.addEventListener('pointerenter', showPreview);
-      eyeBtn.addEventListener('focus', showPreview);
+      const scheduleShow = () => {
+        cancelShow();
+        previewManager.cancelHide?.();
+        showTimer = setTimeout(() => {
+          showTimer = null;
+          previewManager.show(eyeBtn, prompt, { onEdit });
+        }, 200);
+      };
+      const hidePreview = () => {
+        cancelShow();
+        previewManager.scheduleHide();
+      };
+      eyeBtn.addEventListener('mouseenter', scheduleShow);
+      eyeBtn.addEventListener('pointerenter', scheduleShow);
+      eyeBtn.addEventListener('focus', scheduleShow);
       eyeBtn.addEventListener('mouseleave', hidePreview);
       eyeBtn.addEventListener('pointerleave', hidePreview);
       eyeBtn.addEventListener('blur', hidePreview);
       eyeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showPreview();
+        cancelShow();
+        previewManager.cancelHide?.();
+        previewManager.show(eyeBtn, prompt, { onEdit });
       });
     }
 

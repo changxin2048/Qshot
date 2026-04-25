@@ -85,11 +85,24 @@ async function start() {
   state.groups = createNormalizedGroups(stored[GROUPS_STORAGE_KEY]);
   state.promptGroups = createNormalizedPromptGroups(stored[PROMPTS_STORAGE_KEY]);
   state.uiPrefs = createNormalizedUiPrefs(stored[UI_PREFS_STORAGE_KEY]);
-  state.defaultRandomQuestionsText = await loadDefaultRandomQuestionsText();
+  const uiLang = (() => {
+    try {
+      return (chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
+    } catch (_e) {
+      return (navigator.language || "").toLowerCase();
+    }
+  })();
+  state.defaultRandomQuestionsText = await loadDefaultRandomQuestionsText(uiLang);
+  const otherLang = uiLang.startsWith("zh") ? "en" : "zh";
+  const otherDefaultRandomQuestionsText = await loadDefaultRandomQuestionsText(otherLang);
   const storedRaw = stored[RANDOM_QUESTIONS_STORAGE_KEY];
   // 如果存储的内容是旧版（以 # 注释开头的说明块），视为未自定义，替换为新的干净默认题库
   const isOldDefault = typeof storedRaw === "string" && storedRaw.trimStart().startsWith("#");
-  state.randomQuestionsText = (typeof storedRaw === "string" && !isOldDefault)
+  const hasUserRandomQuestions = typeof storedRaw === "string" && storedRaw.trim().length > 0;
+  const normalizedRaw = hasUserRandomQuestions ? storedRaw.trim() : "";
+  const normalizedOtherDefault = otherDefaultRandomQuestionsText.trim();
+  const isStoredOtherLangDefault = normalizedRaw && normalizedRaw === normalizedOtherDefault;
+  state.randomQuestionsText = (hasUserRandomQuestions && !isOldDefault && !isStoredOtherLangDefault)
     ? storedRaw
     : state.defaultRandomQuestionsText;
   state.activePromptGroupId = state.promptGroups[0]?.id || null;
@@ -114,7 +127,7 @@ async function start() {
   if (hashSection && SECTION_META[hashSection]) {
     setActiveSection(hashSection);
   } else {
-    renderCurrentSection();
+    setActiveSection(state.activeSection);
   }
 }
 
@@ -223,20 +236,34 @@ function updateSectionVisibility() {
   const showRandom = state.activeSection === "random";
   const showOther = state.activeSection === "other";
   const showAbout = state.activeSection === "about";
-  dom.groupsSection.hidden = !showGroups;
-  dom.promptsSection.hidden = !showPrompts;
-  dom.customSection.hidden = !showCustom;
-  dom.randomSection.hidden = !showRandom;
-  dom.otherSection.hidden = !showOther;
-  dom.aboutSection.hidden = !showAbout;
-  dom.groupsSection.style.display = showGroups ? "flex" : "none";
-  dom.promptsSection.style.display = showPrompts ? "flex" : "none";
-  dom.customSection.style.display = showCustom ? "flex" : "none";
-  dom.randomSection.style.display = showRandom ? "flex" : "none";
-  dom.otherSection.style.display = showOther ? "flex" : "none";
-  dom.aboutSection.style.display = showAbout ? "flex" : "none";
-  dom.promptsHeaderActions.hidden = !showPrompts;
-  dom.promptsHeaderActions.style.display = showPrompts ? "flex" : "none";
+  if (dom.groupsSection) {
+    dom.groupsSection.hidden = !showGroups;
+    dom.groupsSection.style.display = showGroups ? "flex" : "none";
+  }
+  if (dom.promptsSection) {
+    dom.promptsSection.hidden = !showPrompts;
+    dom.promptsSection.style.display = showPrompts ? "flex" : "none";
+  }
+  if (dom.customSection) {
+    dom.customSection.hidden = !showCustom;
+    dom.customSection.style.display = showCustom ? "flex" : "none";
+  }
+  if (dom.randomSection) {
+    dom.randomSection.hidden = !showRandom;
+    dom.randomSection.style.display = showRandom ? "flex" : "none";
+  }
+  if (dom.otherSection) {
+    dom.otherSection.hidden = !showOther;
+    dom.otherSection.style.display = showOther ? "flex" : "none";
+  }
+  if (dom.aboutSection) {
+    dom.aboutSection.hidden = !showAbout;
+    dom.aboutSection.style.display = showAbout ? "flex" : "none";
+  }
+  if (dom.promptsHeaderActions) {
+    dom.promptsHeaderActions.hidden = !showPrompts;
+    dom.promptsHeaderActions.style.display = showPrompts ? "flex" : "none";
+  }
   if (dom.promptLearnLink) {
     dom.promptLearnLink.hidden = !showPrompts;
   }

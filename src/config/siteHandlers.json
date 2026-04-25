@@ -32,6 +32,8 @@
               "textarea"
             ],
             "inputType": "auto",
+            "maxAttempts": 20,
+            "stableWaitMs": 800,
             "description": "写入查询内容（execCommand insertText 会派发原生 input 事件同步 React 状态）"
           },
           {
@@ -43,7 +45,9 @@
             ],
             "submitSelectors": [
               "button[data-testid='send-button']",
+              "button[data-testid*='send']",
               "button[aria-label*='Send']",
+              "button[aria-label*='Submit']",
               "button[aria-label*='发送']",
               "button[type='submit']"
             ],
@@ -215,6 +219,10 @@
           {
             "action": "focus",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
+              "[class*='input'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ]
@@ -222,6 +230,10 @@
           {
             "action": "setValue",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
+              "[class*='input'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ],
@@ -230,6 +242,10 @@
           {
             "action": "triggerEvents",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
+              "[class*='input'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ],
@@ -462,11 +478,15 @@
               "textarea"
             ],
             "submitSelectors": [
+              "button[data-testid*='send']",
+              "button[data-testid*='submit']",
               "button[type='submit']",
               "button[aria-label*='Send']",
-              "button[aria-label*='发送']",
+              "button[aria-label*='Submit']",
               "button[aria-label*='message']",
+              "button[aria-label*='发送']",
               "[role='button'][aria-label*='Send']",
+              "[role='button'][aria-label*='Submit']",
               "[role='button'][aria-label*='发送']"
             ]
           },
@@ -530,20 +550,45 @@
           {
             "action": "smartSubmit",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
+              "[class*='input'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ],
             "submitSelectors": [
+              ".t-chat__sender button",
+              ".t-chat-sender button",
+              "[class*='sender'] button",
+              "[class*='send'] button",
+              "button[class*='send']",
+              "button[class*='submit']",
+              "[class*='send-btn']",
+              "[class*='send_button']",
+              "[class*='send-button']",
+              "[class*='btn-send']",
+              "[class*='icon-send']",
+              "[data-testid*='send']",
+              "[data-testid*='submit']",
               "button[type='submit']",
               "button[aria-label*='发送']",
               "button[aria-label*='Send']",
+              "button[title*='发送']",
+              "button[title*='Send']",
               "[role='button'][aria-label*='发送']",
               "[role='button'][aria-label*='Send']"
-            ]
+            ],
+            "submitWaitMs": 2500,
+            "postClickVerifyMs": 900
           },
           {
             "action": "sendKeys",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
+              "[class*='input'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ],
@@ -989,10 +1034,14 @@
               "textarea"
             ],
             "submitSelectors": [
+              "button[data-testid*='send']",
+              "button[data-testid*='submit']",
               "button[type='submit']",
               "button[aria-label*='Submit']",
               "button[aria-label*='Send']",
+              "button[aria-label*='message']",
               "button[aria-label*='发送']",
+              "[role='button'][aria-label*='Submit']",
               "[role='button'][aria-label*='Send']"
             ]
           },

@@ -1,0 +1,50 @@
+What is the single most noteworthy AI development today? Don't generalize - name just one specific thing.
+Which 3 AI skills should ordinary people learn first? Rank them from easiest to hardest and explain the real-world use case for each.
+What are the most common beginner mistakes when using AI? List 3 typical misconceptions and the correct approach for each.
+If you could only keep 3 AI habits, which ones are worth keeping? Explain your reasoning.
+How can you tell whether you're "using AI" or "being led by AI"? Give 3 self-check signals.
+AI can save me time, but which parts of "thinking for myself" should never be outsourced? Analyze from three dimensions: decision-making, creativity, and value judgment.
+What's the most effective way to quickly sharpen your AI prompting skills? Give me a 7-day practice plan I can start right now.
+What are some niche but genuinely useful AI tools? Recommend 5, explaining their use cases and how they differ from mainstream alternatives.
+What's the most efficient path to learning a brand-new skill using AI? Demonstrate the full process with a specific example.
+Which AI open-source projects are currently generating the most buzz in Silicon Valley and developer communities? List the Top 5, with project links and a one-sentence description of each.
+Write a clear but accessible explanation of why AI hallucinations happen, what they typically look like, and how ordinary users can spot them.
+If I want to boost my productivity with AI right now, what are 3 techniques that have recently emerged or matured? Tell me only things I can start using immediately.
+What is OpenAI's latest model? Include the exact release date, key capability upgrades, and the critical differences from the previous generation.
+What are the milestone events in AI from 2024 to now? List them on a timeline with specific dates, event descriptions, and industry impact.
+How do the mainstream Chinese AI video generation tools currently compare in terms of video quality, generation speed, and controllability? Give me a concise comparison table.
+What are the 3 most important AI news items from the past 7 days that ordinary people should know about? Answer in the format: "what happened / why it matters / what it means for ordinary people." Keep it under 200 words.
+In the past 30 days, which mainstream AI tool updates have genuinely improved work efficiency? Choose 3, explain who they're for and what problem they solve. Keep it under 300 words.
+Write a sharp 300-word commentary on the topic "How to stay competitive in the AI era." Make it incisive and direct.
+In under 400 words, analyze: why are modern people more connected online than ever, yet subjective loneliness hasn't meaningfully declined?
+Pick a random opinion and rewrite it three ways: rational version, sharp version, and gentle version - 80 words each.
+Give me a counterintuitive idea, then write it into a 300-word piece that makes readers want to keep going after the very first sentence.
+Why do we still care about things we consciously know don't matter? Explain from two angles: evolutionary psychology and cognitive bias.
+What everyday habits in modern life seem perfectly normal but are quietly draining your energy? List 5, along with a suggested alternative for each.
+Why is loneliness on the rise among modern people? Analyze from four dimensions: social structure, work patterns, social media, and psychological habits - and cite recent research or data.
+Why do so many people appear increasingly free yet feel increasingly empty inside? Unpack it from four angles: choice overload, social comparison, loss of meaning, and thinning relationships.
+Why do so many people understand so many life lessons yet rarely truly change? Explain using the "intention-behavior gap" from behavioral psychology research.
+What kinds of "effort" are actually just self-congratulation? List 5 common patterns and explain why they look productive but produce little.
+Treat "anxiety" as a running operating system - list 5 potential underlying bugs, and provide a psychologically grounded debugging protocol.
+Why do some relationships feel intoxicating but not safe? Analyze the essential difference between "high-stimulation attachment" and "stable connection attachment," and the long-term cost of each.
+Why do we most easily lose our temper with the people closest to us? Explain from three angles: emotional regulation resources, security dependency, and projection - and give one actionable coping strategy.
+What are the most common emotional manipulation tactics on the internet? List 5 typical techniques with real-world examples, and give methods for recognizing and defending against each.
+Which widely accepted "motivational quotes" actually fall apart under logical scrutiny? Pick 5 and break down the logical flaw in each.
+How does social media's algorithm precisely manufacture anxiety and filter bubbles? Explain from three levels: recommendation mechanisms, user behavioral data, and content distribution strategy.
+How do you quickly tell whether a piece of content is sharing information or pushing an agenda? Give a judgment framework you can apply in under 30 seconds.
+What are some common but extremely inefficient work habits that could be completely replaced by AI or automation tools? List 5, with specific tool recommendations.
+What are the most common forms of "low-quality busyness"? Effective people don't do more - they make fewer wrong moves. Analyze from three angles: task selection, time allocation, and attention management.
+What's the key difference between a "retrospective" and a "summary"? What steps should a truly effective personal retrospective include? Give me a ready-to-use template.
+When juggling multiple projects at once, where are people most likely to break down? Analyze from three angles: cognitive load, priority confusion, and emotional drain - and give a management framework for "multi-threaded work."
+If AI were to play the role of Socrates, what penetrating questions would it ask a young person anxious about a career transition?
+How do you break a complex large project into easily executable steps? Demonstrate the breakdown process using a real-world example.
+What are some scientifically validated methods for improving attention? Recommend 3, with research sources and specific step-by-step instructions.
+When faced with an overwhelming amount of information, how do you quickly identify what matters? Give me a reusable information-filtering framework.
+How can you use AI to turn a vague idea into actionable steps? Walk through a complete example from "I want to do X" to "the very first thing I open."
+To improve output quality, should you optimize input, process, or expression first? Rank them by priority and explain your reasoning.
+If you flip a coin 10 times and get heads every time, what's the probability of tails on the 11th flip? Explain why most people's intuition is wrong.
+Translate "loneliness" into 5 different life scenarios - without using the word "lonely" or "loneliness" anywhere.
+If "work" were no longer necessary for survival, what are the five most likely psychological crises to emerge in human society? Use reverse reasoning starting from the upper levels of Maslow's hierarchy.
+Help me draft a research outline for "The Economic Drivers Behind Young People's Minimalism," comparing changes in consumer confidence indices over the past two years and forecasting consumption trends for the next three years.
+If you could only keep one human emotion, which would you choose? Give your reasons, then argue against your own choice.
+Among the AI topics everyone's been discussing lately, which ones have genuine long-term value and which look more like short-term hype? Give 2 examples of each.

@@ -2,6 +2,7 @@ import { EXTENSION_ORIGIN } from "./constants.js";
 import { executeSiteHandler } from "./executor.js";
 import { handleExtractRequest } from "./extractor.js";
 import { initEmbedSidebarFix } from "./sidebar-fix.js";
+import { diagnosticLog } from "../../shared/diagnostics.js";
 
 const registryCache = { sites: null };
 const requestResults = new Map();
@@ -11,11 +12,16 @@ let lastReportedUrl = "";
 async function handleSearchRequest(message) {
   const query = String(message.query || "").trim();
   if (!query) {
+    diagnosticLog("inject.search", "empty-query", { site: message.site });
     return { ok: false, siteId: message.site?.id, error: "查询为空" };
   }
 
   const site = await resolveSite(message.site);
   if (!site || !site.searchHandler) {
+    diagnosticLog("inject.search", "site-unmatched", {
+      site: message.site,
+      hostname: window.location.hostname,
+    });
     return {
       ok: false,
       siteId: message.site?.id,
@@ -24,10 +30,17 @@ async function handleSearchRequest(message) {
   }
 
   try {
+    diagnosticLog("inject.search", "handler-start", {
+      site,
+      hostname: window.location.hostname,
+      query,
+    });
     await executeSiteHandler(query, site.searchHandler);
     reportCurrentUrl(site);
+    diagnosticLog("inject.search", "handler-success", { site });
     return { ok: true, siteId: site.id, message: "已在当前卡片中尝试写入查询并触发发送" };
   } catch (error) {
+    diagnosticLog("inject.search", "handler-error", { site, error: error.message });
     return { ok: false, siteId: site.id, error: error.message };
   }
 }
@@ -57,6 +70,7 @@ async function loadRegistry() {
     const payload = await response.json();
     registryCache.sites = payload.sites || [];
   } catch (_error) {
+    diagnosticLog("inject.registry", "load-failed", { error: _error.message });
     registryCache.sites = [];
   }
   return registryCache.sites;
@@ -86,6 +100,7 @@ function notifyParentFrame(result) {
   // prevents leaking query/result to a third-party parent.
   const targetOrigin = EXTENSION_ORIGIN || "*";
   try {
+    diagnosticLog("inject.message", "notify-parent", result);
     window.parent.postMessage(
       {
         type: "QSHOT_RESULT",
@@ -98,6 +113,7 @@ function notifyParentFrame(result) {
       targetOrigin
     );
   } catch (_error) {
+    diagnosticLog("inject.message", "notify-parent-failed", { error: _error.message });
     // no parent in top-tab mode
   }
 }
@@ -146,11 +162,13 @@ function reportCurrentUrl(site) {
   // We still want the strict origin check to protect data leakage to
   // non-extension parents, so we swallow the resulting error silently.
   try {
+    diagnosticLog("inject.url", "report", { site, currentUrl });
     window.parent.postMessage(
       { type: "QSHOT_URL_UPDATE", siteId: site.id, currentUrl },
       targetOrigin
     );
   } catch (_error) {
+    diagnosticLog("inject.url", "report-failed", { site, error: _error.message });
     // Parent is not our extension page — that's fine, just skip the report.
   }
 }
@@ -194,11 +212,20 @@ function installWindowMessageListener() {
     if (event.data.type !== "QSHOT_SEARCH") return;
 
     const requestId = event.data.requestId;
+    diagnosticLog("inject.message", "search-received", {
+      site: event.data.site,
+      requestId,
+      query: event.data.query,
+    });
     if (requestId && requestResults.has(requestId)) {
+      diagnosticLog("inject.message", "return-cached-result", { requestId, site: event.data.site });
       notifyParentFrame(requestResults.get(requestId));
       return;
     }
-    if (requestId && requestsInProgress.has(requestId)) return;
+    if (requestId && requestsInProgress.has(requestId)) {
+      diagnosticLog("inject.message", "duplicate-in-progress", { requestId, site: event.data.site });
+      return;
+    }
     if (requestId) requestsInProgress.add(requestId);
 
     handleSearchRequest(event.data)

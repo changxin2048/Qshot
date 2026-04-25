@@ -29,7 +29,7 @@ export function renderGroupsSection() {
   addCard.querySelector("button").addEventListener("click", async () => {
     state.groups.push({
       id: `group_${Date.now()}`,
-      name: "新搜索组",
+      name: msg("settings_groups_newGroupName", "新搜索组"),
       enabled: true,
       mode: "compare",
       siteIds: []
@@ -264,7 +264,10 @@ function createHoverPicker(group) {
       if (!categorySites.length) {
         const empty = document.createElement("div");
         empty.className = "hover-picker-empty";
-        empty.innerHTML = `还没有自定义站点<br/><span class="hover-picker-empty-hint">前往左侧「自定义搜索」添加</span>`;
+        empty.innerHTML = msg(
+          "settings_groups_customEmpty",
+          `还没有自定义站点<br/><span class="hover-picker-empty-hint">前往左侧「自定义搜索」添加</span>`
+        );
         submenu.appendChild(empty);
       } else {
         categorySites.forEach((site) => {
@@ -301,7 +304,10 @@ function createHoverPicker(group) {
     } else if (key === "other") {
       const tip = document.createElement("div");
       tip.className = "hover-picker-tip";
-      tip.textContent = "社媒平台更推荐使用“新开标签”模式；卡片呈现的预览与打开体验可能不稳定。";
+      tip.textContent = msg(
+        "settings_groups_otherTip",
+        "社媒平台更推荐使用“新开标签”模式；卡片呈现的预览与打开体验可能不稳定。"
+      );
       submenu.appendChild(tip);
 
       categorySites.forEach((site) => {

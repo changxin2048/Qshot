@@ -13,6 +13,16 @@ export async function initEmbedSidebarFix(resolveSite) {
   if (!site) return;
 
   const STYLE_ID = "ai-compare-embed-sidebar-fix";
+  const COMMON_SIDEBAR_CSS = [
+    "aside, [role='navigation'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    "[class*='sidebar'], [class*='side-bar'], [class*='sider'], [class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='conversation-list'], [class*='chat-list'], [class*='session-list'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    "main, [role='main'], [class*='main-content'], [class*='chat-main'], [class*='conversation'] { flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin-left: 0 !important; padding-left: 0 !important; }",
+  ];
+  const DOMESTIC_CHAT_CSS = [
+    ...COMMON_SIDEBAR_CSS,
+    "nav:not(:has(textarea)):not(:has([contenteditable='true'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    "[class*='layout'], [class*='container'], [class*='wrapper'] { margin-left: 0 !important; padding-left: 0 !important; }",
+  ];
 
   const SITE_STYLE_MAP = {
     chatgpt: [
@@ -32,6 +42,40 @@ export async function initEmbedSidebarFix(resolveSite) {
       "[class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='chat-list'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; }",
       "div:has(nav):not(:has(main)):not(:has([role='main'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; }",
       "[class*='chat-main'], [class*='main-content'], [class*='conversation'] { flex: 1 !important; width: 100% !important; min-width: 0 !important; padding-left: 0 !important; margin-left: 0 !important; }",
+    ],
+    doubao: [
+      "/* AI批量搜索：隐藏豆包侧边栏 / 会话列表 */",
+      ...DOMESTIC_CHAT_CSS,
+      "[class*='semi-layout-sider'], [class*='conversation-sidebar'], [class*='chat-history'], [class*='left-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    ],
+    qwen: [
+      "/* AI批量搜索：隐藏通义千问 / Qwen 侧边栏 */",
+      ...DOMESTIC_CHAT_CSS,
+      ".t-layout__sider, .t-chat__sider, .t-chat-sider, [class*='ant-layout-sider'], [class*='conversation-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    ],
+    yuanbao: [
+      "/* AI批量搜索：隐藏腾讯元宝侧边栏 / 会话列表 */",
+      ...DOMESTIC_CHAT_CSS,
+      "[class*='conversation-sidebar'], [class*='history-sidebar'], [class*='chat-history'], [class*='left-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    ],
+    kimi: [
+      "/* AI批量搜索：隐藏 Kimi 侧边栏 / 会话列表 */",
+      ...DOMESTIC_CHAT_CSS,
+      "[class*='conversation-sidebar'], [class*='chat-history'], [class*='left-sidebar'], [class*='nav-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    ],
+    gemini: [
+      "/* AI批量搜索：隐藏 Gemini 侧边栏 */",
+      ...COMMON_SIDEBAR_CSS,
+      "bard-sidenav, mat-sidenav, .mat-drawer-side, .mat-sidenav { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; visibility: hidden !important; }",
+      ".mat-drawer-content, mat-sidenav-content { margin-left: 0 !important; width: 100% !important; }",
+    ],
+    claude: [
+      "/* AI批量搜索：隐藏 Claude 侧边栏 */",
+      ...COMMON_SIDEBAR_CSS,
+    ],
+    grok: [
+      "/* AI批量搜索：隐藏 Grok 侧边栏 */",
+      ...COMMON_SIDEBAR_CSS,
     ],
   };
 

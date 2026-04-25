@@ -56,7 +56,7 @@ async function executeStep(step, query, context) {
       await executeSendKeys(step);
       return;
     case "smartSubmit":
-      if (await executeSmartSubmit(step)) context.submitted = true;
+      if (await executeSmartSubmit(step, query)) context.submitted = true;
       return;
     default:
       throw new Error(`不支持的 action: ${step.action}`);
@@ -121,11 +121,29 @@ async function executeSetValue(step, query) {
     await delay(60 + attempt * 40);
 
     const current = await readCurrentValue(step);
-    if (current.includes(text)) return;
+    if (current.includes(text) && await valueRemainsStable(step, text)) return;
   }
 
   if (lastError) throw lastError;
   throw new Error("写入输入框后内容未生效");
+}
+
+async function valueRemainsStable(step, text) {
+  const stableWaitMs = Number.isFinite(step.stableWaitMs) ? step.stableWaitMs : 0;
+  if (stableWaitMs <= 0) {
+    return true;
+  }
+
+  const deadline = Date.now() + stableWaitMs;
+  while (Date.now() < deadline) {
+    await delay(Math.min(120, deadline - Date.now()));
+    const current = await readCurrentValue(step);
+    if (!current.includes(text)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 async function readCurrentValue(step) {
@@ -168,7 +186,7 @@ async function executeClick(step) {
       if (!element) continue;
       lastSeen = element;
       if (isUsableSubmitButton(element)) {
-        element.click();
+        activateSubmitButton(element);
         return true;
       }
     }
@@ -193,7 +211,7 @@ async function executeSendKeys(step) {
   }
 }
 
-async function executeSmartSubmit(step) {
+async function executeSmartSubmit(step, query) {
   const anchor = step.selector || step.selectors
     ? await findElement(step)
     : document.activeElement;
@@ -222,7 +240,15 @@ async function executeSmartSubmit(step) {
   while (Date.now() <= deadline) {
     const candidate = findBestSubmitButton(anchor, submitSelectors);
     if (candidate) {
-      candidate.click();
+      activateSubmitButton(candidate);
+      if (step.enterFallbackAfterClick === true && await shouldTryKeyboardFallbackAfterClick(step, query, anchor)) {
+        const retryCandidate = findBestSubmitButton(anchor, submitSelectors);
+        if (retryCandidate && retryCandidate !== candidate) {
+          activateSubmitButton(retryCandidate);
+          await delay(120);
+        }
+        dispatchSubmitKeys(anchor);
+      }
       return true;
     }
     await delay(25);
@@ -246,10 +272,79 @@ async function executeSmartSubmit(step) {
   }
 
   // Last resort: synthetic Enter.
-  dispatchKeyboardEvent(anchor, "keydown", "Enter");
-  dispatchKeyboardEvent(anchor, "keypress", "Enter");
-  dispatchKeyboardEvent(anchor, "keyup", "Enter");
+  dispatchSubmitKeys(anchor);
   return false;
+}
+
+function dispatchSubmitKeys(anchor) {
+  const targets = [anchor, document.activeElement, document.body, document].filter(Boolean);
+  const seen = new Set();
+
+  targets.forEach((target) => {
+    if (seen.has(target)) return;
+    seen.add(target);
+    dispatchKeyboardEvent(target, "keydown", "Enter");
+    dispatchKeyboardEvent(target, "keypress", "Enter");
+    dispatchKeyboardEvent(target, "keyup", "Enter");
+  });
+}
+
+function activateSubmitButton(element) {
+  safeFocus(element);
+  dispatchPointerLikeEvent(element, "pointerdown");
+  dispatchPointerLikeEvent(element, "mousedown");
+  dispatchPointerLikeEvent(element, "pointerup");
+  dispatchPointerLikeEvent(element, "mouseup");
+  if (typeof element.click === "function") {
+    element.click();
+  }
+}
+
+function dispatchPointerLikeEvent(element, type) {
+  const rect = element.getBoundingClientRect();
+  const eventInit = {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    button: 0,
+    buttons: type.endsWith("down") ? 1 : 0,
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+  };
+  const EventCtor = type.startsWith("pointer") && typeof PointerEvent === "function"
+    ? PointerEvent
+    : MouseEvent;
+  element.dispatchEvent(new EventCtor(type, eventInit));
+}
+
+async function shouldTryKeyboardFallbackAfterClick(step, query, anchor) {
+  const text = String(query || "").trim();
+  if (!text) return false;
+
+  const waitMs = Number.isFinite(step.postClickVerifyMs) ? step.postClickVerifyMs : 600;
+  await delay(waitMs);
+
+  const current = readCurrentValueNow(step, anchor);
+  return current.includes(text);
+}
+
+function readCurrentValueNow(step, anchor) {
+  const anchorText = readElementValue(anchor);
+  if (anchorText) return anchorText;
+
+  for (const selector of getSelectors(step)) {
+    const element = document.querySelector(selector);
+    const value = readElementValue(element);
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function readElementValue(element) {
+  if (!element) return "";
+  if (isTextControl(element)) return String(element.value || "");
+  return String(element.textContent || "");
 }
 
 function isSafeToSubmitForm(form) {
@@ -337,19 +432,45 @@ function findBestSubmitButton(anchor, selectors) {
 
 function isUsableSubmitButton(element) {
   if (!(element instanceof HTMLElement)) return false;
-  if (element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true") {
+  if (element.hasAttribute("disabled")
+    || element.getAttribute("aria-disabled") === "true"
+    || element.getAttribute("data-disabled") === "true") {
     return false;
   }
 
   // Kimi (.send-button-container.disabled) / 豆包 etc. express "disabled" via
   // class names instead of the attribute. Without filtering we'd click a DIV
   // still in disabled state and the site would silently ignore it.
-  const className = typeof element.className === "string" ? element.className : "";
-  if (/\b(is-disabled|btn-disabled|send-button-container--disabled)\b/.test(className)
-    || /(^|\s)disabled(\s|$)/.test(className)) {
+  if (hasDisabledState(element)) {
     return false;
   }
 
   const rect = element.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  if (rect.width <= 0 || rect.height <= 0) return false;
+
+  const style = window.getComputedStyle(element);
+  return style.visibility !== "hidden"
+    && style.display !== "none"
+    && style.pointerEvents !== "none";
+}
+
+function hasDisabledState(element) {
+  const disabledClassPattern = /(^|\s|[-_])(disabled|is-disabled|btn-disabled|button-disabled|mat-mdc-button-disabled|send-button-container--disabled)(\s|$|[-_])/i;
+  let current = element;
+
+  while (current instanceof HTMLElement) {
+    const className = typeof current.className === "string" ? current.className : "";
+    if (disabledClassPattern.test(className)
+      || current.getAttribute("aria-disabled") === "true"
+      || current.getAttribute("data-disabled") === "true") {
+      return true;
+    }
+
+    if (current.tagName === "FORM" || current.getAttribute("role") === "form") {
+      return false;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
 }

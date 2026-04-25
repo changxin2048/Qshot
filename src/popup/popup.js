@@ -103,6 +103,7 @@ function bindEvents() {
   });
 
   if (queryInput) {
+    queryInput.addEventListener("input", syncComposerLayout);
     queryInput.addEventListener("mouseup", syncComposerLayout);
     queryInput.addEventListener("keyup", syncComposerLayout);
     if (typeof ResizeObserver !== "undefined") {
@@ -191,21 +192,29 @@ function applyUiPrefs() {
   updatePromptPickerLayoutState();
 }
 
-function syncComposerLayout() {
+function syncComposerLayout(options = {}) {
   const { composer, queryInput } = state.dom;
   if (!composer || !queryInput) return;
 
-  // Clear is-expanded + inline height so scrollHeight reflects real content.
-  composer.classList.remove("is-expanded");
-  queryInput.style.height = "0px";
+  // Clear layout classes + inline height so scrollHeight reflects real content.
+  composer.classList.remove("is-mid-expanded", "is-expanded");
+  queryInput.style.height = "auto";
   queryInput.style.minHeight = "0px";
 
   const scrollH = queryInput.scrollHeight;
   const lineHeight = parseFloat(window.getComputedStyle(queryInput).lineHeight || "21.75");
+  const maxHeight = parseFloat(window.getComputedStyle(queryInput).maxHeight || "220");
 
-  queryInput.style.height = "";
   queryInput.style.minHeight = "";
-  composer.classList.toggle("is-expanded", scrollH > lineHeight * 1.7);
+  const shouldExpand = scrollH > lineHeight * 2.7;
+  const shouldMidExpand = !shouldExpand && scrollH > lineHeight * 1.7;
+  composer.classList.toggle("is-mid-expanded", shouldMidExpand);
+  composer.classList.toggle("is-expanded", shouldExpand);
+  queryInput.style.height = shouldExpand ? `${Math.min(scrollH, maxHeight)}px` : "";
+  queryInput.style.overflowY = shouldExpand && scrollH > maxHeight ? "auto" : "";
+  if (options.scrollToTop) {
+    queryInput.scrollTop = 0;
+  }
 }
 
 function updatePromptPickerLayoutState() {

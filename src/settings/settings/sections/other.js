@@ -46,11 +46,11 @@ export function renderOtherSection() {
   otherSection.appendChild(createSearchConfigIoCard());
 }
 
-export function createOtherSettingToggle(key, title, desc, tip) {
+export function createOtherSettingToggle(key, title, desc, tip, options = {}) {
   const row = document.createElement("article");
   row.className = "other-setting-row" + (tip ? " other-setting-row--with-tip" : "");
 
-  const isOn = state.uiPrefs[key] !== false;
+  const isOn = getOtherSettingValue(key, options.defaultValue !== false);
   row.innerHTML = `
     <div class="other-setting-row-main">
       <div class="other-setting-copy">
@@ -66,7 +66,7 @@ export function createOtherSettingToggle(key, title, desc, tip) {
 
   const toggle = row.querySelector(".other-setting-switch");
   toggle?.addEventListener("click", async () => {
-    state.uiPrefs[key] = !(state.uiPrefs[key] !== false);
+    state.uiPrefs[key] = !getOtherSettingValue(key, options.defaultValue !== false);
     await persistAll();
     if (state.activeSection === "random") {
       state.renderRandomSection();
@@ -76,6 +76,13 @@ export function createOtherSettingToggle(key, title, desc, tip) {
   });
 
   return row;
+}
+
+function getOtherSettingValue(key, defaultValue = true) {
+  if (Object.prototype.hasOwnProperty.call(state.uiPrefs || {}, key)) {
+    return state.uiPrefs[key] !== false;
+  }
+  return defaultValue;
 }
 
 function createShortcutCard() {

@@ -11,8 +11,11 @@ export async function loadSites() {
   const customSites = await loadCustomSitesFromStorage();
   const mergedSites = mergeSiteLists(builtinSites, customSites);
   state.allSites = mergedSites;
-  if (state.requestedSiteIds && state.requestedSiteIds.size > 0) {
-    state.sites = mergedSites.filter((site) => state.requestedSiteIds.has(site.id));
+  if (Array.isArray(state.requestedSiteIds) && state.requestedSiteIds.length > 0) {
+    const siteById = new Map(mergedSites.map((site) => [site.id, site]));
+    state.sites = state.requestedSiteIds
+      .map((siteId) => siteById.get(siteId))
+      .filter(Boolean);
   } else {
     state.sites = mergedSites;
   }

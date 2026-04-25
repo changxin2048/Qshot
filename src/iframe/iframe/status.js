@@ -1,6 +1,7 @@
 import { state, elements } from "./state.js";
 import { updateLatestHistoryUrl } from "./history.js";
 import { resolvePendingDispatch } from "./send.js";
+import { diagnosticLog } from "../../shared/diagnostics.js";
 
 export function handleFrameMessage(event) {
   const payload = event.data;
@@ -12,10 +13,16 @@ export function handleFrameMessage(event) {
   // 这样可以阻止第三方内嵌广告 / 跨站 iframe 伪造 URL_UPDATE / RESULT 污染 UI 或历史记录。
   const ref = findCardRefByMessageSource(event.source);
   if (!ref || ref.site.id !== payload.siteId) {
+    diagnosticLog("compare.message", "source-mismatch", {
+      payloadType: payload.type,
+      siteId: payload.siteId,
+      matchedSiteId: ref?.site?.id,
+    });
     return;
   }
 
   if (payload.type === "QSHOT_URL_UPDATE") {
+    diagnosticLog("compare.message", "url-update", { siteId: payload.siteId, currentUrl: payload.currentUrl });
     ref.injectedPinged = true;
     if (payload.currentUrl) {
       ref.currentUrl = payload.currentUrl;
@@ -25,8 +32,16 @@ export function handleFrameMessage(event) {
   }
 
   if (payload.type !== "QSHOT_RESULT") {
+    diagnosticLog("compare.message", "unknown-type", { payloadType: payload.type, siteId: payload.siteId });
     return;
   }
+
+  diagnosticLog("compare.message", "result", {
+    siteId: payload.siteId,
+    requestId: payload.requestId,
+    ok: payload.ok,
+    error: payload.error,
+  });
 
   if (payload.requestId) {
     resolvePendingDispatch(payload.requestId, payload);

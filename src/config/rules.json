@@ -484,5 +484,81 @@
       ]
     },
     "condition": { "urlFilter": "||grok.com/", "resourceTypes": ["sub_frame"] }
+  },
+  {
+    "id": 25,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Sec-Fetch-Dest", "operation": "set", "value": "document" },
+        { "header": "Sec-Fetch-Site", "operation": "set", "value": "same-origin" },
+        { "header": "Sec-Fetch-Mode", "operation": "set", "value": "navigate" },
+        { "header": "Sec-Fetch-User", "operation": "set", "value": "?1" }
+      ],
+      "responseHeaders": [
+        { "header": "content-security-policy", "operation": "remove" },
+        { "header": "content-security-policy-report-only", "operation": "remove" },
+        { "header": "x-frame-options", "operation": "remove" }
+      ]
+    },
+    "condition": { "urlFilter": "||www.kimi.com/", "resourceTypes": ["sub_frame"] }
+  },
+  {
+    "id": 26,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Sec-Fetch-Dest", "operation": "set", "value": "document" },
+        { "header": "Sec-Fetch-Site", "operation": "set", "value": "same-origin" },
+        { "header": "Sec-Fetch-Mode", "operation": "set", "value": "navigate" },
+        { "header": "Sec-Fetch-User", "operation": "set", "value": "?1" }
+      ],
+      "responseHeaders": [
+        { "header": "content-security-policy", "operation": "remove" },
+        { "header": "content-security-policy-report-only", "operation": "remove" },
+        { "header": "x-frame-options", "operation": "remove" }
+      ]
+    },
+    "condition": { "urlFilter": "||kimi.com/", "resourceTypes": ["sub_frame"] }
+  },
+  {
+    "id": 27,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Sec-Fetch-Dest", "operation": "set", "value": "document" },
+        { "header": "Sec-Fetch-Site", "operation": "set", "value": "same-origin" },
+        { "header": "Sec-Fetch-Mode", "operation": "set", "value": "navigate" },
+        { "header": "Sec-Fetch-User", "operation": "set", "value": "?1" }
+      ],
+      "responseHeaders": [
+        { "header": "content-security-policy", "operation": "remove" },
+        { "header": "content-security-policy-report-only", "operation": "remove" },
+        { "header": "x-frame-options", "operation": "remove" }
+      ]
+    },
+    "condition": { "urlFilter": "||www.qianwen.com/", "resourceTypes": ["sub_frame"] }
+  },
+  {
+    "id": 28,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Sec-Fetch-Dest", "operation": "set", "value": "document" },
+        { "header": "Sec-Fetch-Site", "operation": "set", "value": "same-origin" },
+        { "header": "Sec-Fetch-Mode", "operation": "set", "value": "navigate" },
+        { "header": "Sec-Fetch-User", "operation": "set", "value": "?1" }
+      ],
+      "responseHeaders": [
+        { "header": "content-security-policy", "operation": "remove" },
+        { "header": "content-security-policy-report-only", "operation": "remove" },
+        { "header": "x-frame-options", "operation": "remove" }
+      ]
+    },
+    "condition": { "urlFilter": "||qianwen.com/", "resourceTypes": ["sub_frame"] }
   }
 ]

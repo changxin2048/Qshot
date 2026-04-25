@@ -71,7 +71,8 @@ export function formatHistoryDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  const lang = window.__QSHOT_I18N__?.getUiLanguage?.() || navigator.language || "zh-CN";
+  return date.toLocaleDateString(lang, { year: "numeric", month: "numeric", day: "numeric" });
 }
 
 export async function loadGroups() {
