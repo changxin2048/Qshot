@@ -30,6 +30,8 @@ const SRC_ASSETS = [
   "manifest.json",
   "icons",
   "config/initialState.json",
+  "config/initialState.zh-CN.json",
+  "config/initialState.en.json",
   "config/rules.json",
   "config/siteHandlers.json",
   "config/random-questions",

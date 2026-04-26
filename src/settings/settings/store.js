@@ -107,7 +107,7 @@ export function getDisplayPromptEntries(group) {
 export function createNormalizedUiPrefs(input) {
   const source = input && typeof input === "object" ? input : {};
   return {
-    showHistory: source.showHistory !== false,
+    showHistory: source.showHistory === true,
     showRandomButton: source.showRandomButton !== false,
     showPromptButton: source.showPromptButton !== false,
     prewarmEnabled: source.prewarmEnabled !== false,

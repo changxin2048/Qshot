@@ -1,5 +1,33 @@
 import { matchShortcut, normalizeShortcut } from "../shared/shortcut.js";
 
+// Framebusting 防御：第三方站点（YouTube/Reddit/X/TikTok 等）经常用脚本检测是否在 iframe 内，
+// 然后通过 top.location 跳出 / 重定向到主页。这里在 MAIN world 拦截这些常见模式。
+(function installFramebustingGuard() {
+  if (window.__QSHOT_FRAMEBUST_GUARD__) return;
+  window.__QSHOT_FRAMEBUST_GUARD__ = true;
+  if (window === window.top) return;
+
+  // 1) 拦截 top.location.href = ... / top.location = ... / top.location.replace(...)
+  try {
+    const noopLocation = new Proxy({}, {
+      get(_target, prop) {
+        if (prop === "replace" || prop === "assign" || prop === "reload") {
+          return () => {};
+        }
+        return "";
+      },
+      set() { return true; },
+    });
+    Object.defineProperty(window, "top", { configurable: true, get: () => window.self });
+    Object.defineProperty(window, "parent", { configurable: true, get: () => window.self });
+    Object.defineProperty(document, "domain", { configurable: true, get: () => window.location.hostname });
+    Object.defineProperty(window, "frameElement", { configurable: true, get: () => null });
+    void noopLocation;
+  } catch (_e) {
+    // 某些浏览器版本里这些属性是 non-configurable，吞掉异常即可
+  }
+})();
+
 (function initQshotMainHotkey() {
   if (window.__QSHOT_MAIN_HOTKEY_INSTALLED__) {
     return;

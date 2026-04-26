@@ -16,13 +16,18 @@ export const COMMON_SEARCH_PARAM_KEYS = [
 
 export const SITE_CATEGORIES = {
   ai: { label: "AI", siteIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso", "gemini", "chatgpt", "claude", "grok"] },
-  other: { label: msg("settings_groups_categoryOther", "社媒平台"), siteIds: ["xiaohongshu", "bilibili", "zhihu", "douyin"] },
+  other: { label: msg("settings_groups_categoryOther", "社媒平台"), siteIds: ["xiaohongshu", "bilibili", "zhihu", "douyin", "twitter", "youtube", "reddit", "tiktok"] },
   custom: { label: msg("settings_groups_categoryCustom", "自定义"), siteIds: [] }
 };
 
 export const AI_SITE_GROUPS = [
   { label: msg("settings_groups_aiDomestic", "国内"), siteIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso"] },
   { label: msg("settings_groups_aiOverseas", "国外"), siteIds: ["gemini", "chatgpt", "claude", "grok"] }
+];
+
+export const SOCIAL_SITE_GROUPS = [
+  { label: msg("settings_groups_socialDomestic", "国内"), siteIds: ["xiaohongshu", "bilibili", "zhihu", "douyin"] },
+  { label: msg("settings_groups_socialOverseas", "海外"), siteIds: ["twitter", "youtube", "reddit", "tiktok"] }
 ];
 
 export const SECTION_META = {

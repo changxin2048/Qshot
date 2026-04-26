@@ -985,6 +985,248 @@
       }
     },
     {
+      "id": "twitter",
+      "name": "X",
+      "url": "https://x.com/search?q={query}&src=typed_query",
+      "enabled": true,
+      "supportIframe": true,
+      "supportUrlQuery": true,
+      "matchPatterns": [
+        "x.com",
+        "twitter.com"
+      ],
+      "notes": "X ? iframe ???????????????????????????????????????",
+      "searchHandler": {
+        "steps": [
+          {
+            "action": "focus",
+            "selectors": [
+              "input[data-testid=\"SearchBox_Search_Input\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[type=\"text\"]"
+            ],
+            "optional": true
+          },
+          {
+            "action": "setValue",
+            "selectors": [
+              "input[data-testid=\"SearchBox_Search_Input\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[type=\"text\"]"
+            ],
+            "inputType": "auto",
+            "optional": true
+          },
+          {
+            "action": "sendKeys",
+            "selectors": [
+              "input[data-testid=\"SearchBox_Search_Input\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[type=\"text\"]"
+            ],
+            "keys": [
+              "Enter"
+            ],
+            "optional": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "url": "https://www.youtube.com/results?search_query={query}",
+      "enabled": true,
+      "supportIframe": true,
+      "supportUrlQuery": true,
+      "matchPatterns": [
+        "www.youtube.com",
+        "youtube.com"
+      ],
+      "notes": "YouTube ? iframe ???????????????????????????????????????",
+      "searchHandler": {
+        "steps": [
+          {
+            "action": "focus",
+            "selectors": [
+              "input#search",
+              "input[name=\"search_query\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "optional": true
+          },
+          {
+            "action": "setValue",
+            "selectors": [
+              "input#search",
+              "input[name=\"search_query\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "inputType": "auto",
+            "optional": true
+          },
+          {
+            "action": "sendKeys",
+            "selectors": [
+              "input#search",
+              "input[name=\"search_query\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "keys": [
+              "Enter"
+            ],
+            "optional": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "url": "https://www.reddit.com/search/?q={query}",
+      "enabled": true,
+      "supportIframe": true,
+      "supportUrlQuery": true,
+      "matchPatterns": [
+        "www.reddit.com",
+        "reddit.com"
+      ],
+      "notes": "Reddit ? iframe ???????????????????????????????????????",
+      "searchHandler": {
+        "steps": [
+          {
+            "action": "focus",
+            "selectors": [
+              "input[name=\"q\"]",
+              "input[type=\"search\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "optional": true
+          },
+          {
+            "action": "setValue",
+            "selectors": [
+              "input[name=\"q\"]",
+              "input[type=\"search\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "inputType": "auto",
+            "optional": true
+          },
+          {
+            "action": "sendKeys",
+            "selectors": [
+              "input[name=\"q\"]",
+              "input[type=\"search\"]",
+              "input[placeholder*=\"Search\"]"
+            ],
+            "keys": [
+              "Enter"
+            ],
+            "optional": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "url": "https://www.tiktok.com/search?q={query}",
+      "enabled": true,
+      "supportIframe": true,
+      "supportUrlQuery": true,
+      "matchPatterns": [
+        "www.tiktok.com",
+        "tiktok.com"
+      ],
+      "notes": "TikTok 在 iframe 中对 URL 参数搜索不稳定，改为页面加载后自动写入输入框并发送。",
+      "searchHandler": {
+        "steps": [
+          {
+            "action": "focus",
+            "selectors": [
+              "input[data-e2e*='search']",
+              "input[type=\"search\"]",
+              "input[name=\"q\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[placeholder*=\"搜索\"]",
+              "input[type=\"text\"]"
+            ],
+            "optional": true
+          },
+          {
+            "action": "setValue",
+            "selectors": [
+              "input[data-e2e*='search']",
+              "input[type=\"search\"]",
+              "input[name=\"q\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[placeholder*=\"搜索\"]",
+              "input[type=\"text\"]"
+            ],
+            "inputType": "auto",
+            "optional": true
+          },
+          {
+            "action": "triggerEvents",
+            "selectors": [
+              "input[data-e2e*='search']",
+              "input[type=\"search\"]",
+              "input[name=\"q\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[placeholder*=\"搜索\"]",
+              "input[type=\"text\"]"
+            ],
+            "events": [
+              "input",
+              "change"
+            ],
+            "optional": true
+          },
+          {
+            "action": "wait",
+            "duration": 80,
+            "optional": true
+          },
+          {
+            "action": "smartSubmit",
+            "selectors": [
+              "input[data-e2e*='search']",
+              "input[type=\"search\"]",
+              "input[name=\"q\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[placeholder*=\"搜索\"]",
+              "input[type=\"text\"]"
+            ],
+            "submitSelectors": [
+              "button[data-e2e*='search']",
+              "button[aria-label*='Search']",
+              "button[aria-label*='搜索']",
+              "button[type='submit']",
+              "[role='button'][aria-label*='Search']",
+              "[role='button'][aria-label*='搜索']"
+            ],
+            "optional": true
+          },
+          {
+            "action": "sendKeys",
+            "selectors": [
+              "input[data-e2e*='search']",
+              "input[type=\"search\"]",
+              "input[name=\"q\"]",
+              "input[placeholder*=\"Search\"]",
+              "input[placeholder*=\"搜索\"]",
+              "input[type=\"text\"]"
+            ],
+            "keys": [
+              "Enter"
+            ],
+            "optional": true
+          }
+        ]
+      }
+    },
+    {
       "id": "grok",
       "name": "Grok",
       "url": "https://grok.com/",
@@ -1021,7 +1263,10 @@
               "div[contenteditable='true']",
               "textarea"
             ],
-            "events": ["input", "change"]
+            "events": [
+              "input",
+              "change"
+            ]
           },
           {
             "action": "wait",
@@ -1051,7 +1296,9 @@
               "div[contenteditable='true']",
               "textarea"
             ],
-            "keys": ["Enter"],
+            "keys": [
+              "Enter"
+            ],
             "optional": true
           }
         ]

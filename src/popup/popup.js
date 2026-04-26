@@ -50,6 +50,7 @@ async function start() {
   state.updatePromptPickerLayoutState = updatePromptPickerLayoutState;
 
   applyDomI18n?.(document);
+  await chrome.runtime.sendMessage({ type: "ENSURE_INITIAL_STATE_DEFAULTS" }).catch(() => null);
   await refreshAllSites();
   await Promise.all([
     refreshGroups(),

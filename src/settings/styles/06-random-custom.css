@@ -74,7 +74,7 @@
 }
 
 .group-mode-trigger {
-  min-width: 118px;
+  min-width: 128px;
   min-height: 38px;
   padding: 0 34px 0 16px;
   border: 1px solid #d8d8d8;
@@ -85,6 +85,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -92,6 +93,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .group-mode-trigger-arrow {
@@ -239,7 +241,7 @@
   width: 100%;
   margin-top: 0;
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(110px, 3fr);
+  grid-template-columns: minmax(0, 7fr) minmax(128px, 3fr);
   gap: 14px;
   align-items: center;
 }

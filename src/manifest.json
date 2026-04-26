@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Qshot",
-  "version": "1.1.0",
-  "description": "Qshot-子弹搜索-让搜索更快、更全面。让你同时调用多个 AI 搜索、快速跳转任意网站",
+  "name": "Qshot-子弹搜索",
+  "version": "1.1.1",
+  "description": "Qshot-让搜索更快、更全面。让你同时调用多个 AI 搜索、快速搜索跳转任意网站",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -83,6 +83,8 @@
       "resources": [
         "popup/logo.svg",
         "config/siteHandlers.json",
+        "config/initialState.zh-CN.json",
+        "config/initialState.en.json",
         "config/random-questions/zh-CN.txt",
         "config/random-questions/en.txt"
       ],

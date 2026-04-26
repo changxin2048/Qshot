@@ -28,6 +28,13 @@ export function normalizeQueryForMatch(text) {
 }
 
 export function buildSiteUrl(site, query) {
+  if (site?.id === "youtube") {
+    const youtubeEmbedUrl = buildYoutubeEmbedUrl(query);
+    if (youtubeEmbedUrl) {
+      return youtubeEmbedUrl;
+    }
+  }
+
   const url = site.url || "";
   if (!url.includes("{query}")) {
     return url;
@@ -40,6 +47,56 @@ export function buildSiteUrl(site, query) {
   next = next.replace(/[?&]$/, "");
   // 兜底：万一还残留 {query}，粗暴清掉
   return next.replace(/\{query\}/g, "");
+}
+
+function buildYoutubeEmbedUrl(query) {
+  const text = String(query || "").trim();
+  if (!text) return "";
+
+  const videoId = extractYoutubeVideoId(text);
+  if (!videoId) return "";
+
+  // YouTube IFrame API 推荐带 enablejsapi + origin。
+  // 这里用 youtube-nocookie 域减少第三方 cookie 干扰。
+  const origin = encodeURIComponent(window.location.origin);
+  return `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&origin=${origin}&playsinline=1&rel=0`;
+}
+
+function extractYoutubeVideoId(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return "";
+
+  // 直接输入 11 位 videoId
+  if (/^[A-Za-z0-9_-]{11}$/.test(raw)) {
+    return raw;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch (_e) {
+    return "";
+  }
+
+  const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+  if (host === "youtu.be") {
+    const id = parsed.pathname.replace(/^\/+/, "").split("/")[0];
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+  }
+
+  if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+    const v = parsed.searchParams.get("v");
+    if (/^[A-Za-z0-9_-]{11}$/.test(v || "")) {
+      return v;
+    }
+
+    const match = parsed.pathname.match(/\/(embed|shorts|live)\/([A-Za-z0-9_-]{11})/);
+    if (match?.[2]) {
+      return match[2];
+    }
+  }
+
+  return "";
 }
 
 export function getSelectedSites() {

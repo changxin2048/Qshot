@@ -15,7 +15,7 @@ export const STORAGE_KEYS = {
 
 export const SITE_CATEGORIES = [
   { id: "ai", label: "AI", builtinIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso", "gemini", "chatgpt", "claude", "grok"] },
-  { id: "other", label: "社媒", builtinIds: ["xiaohongshu", "bilibili", "zhihu", "douyin"] },
+  { id: "other", label: "社媒", builtinIds: ["xiaohongshu", "bilibili", "zhihu", "douyin", "twitter", "youtube", "reddit", "tiktok"] },
   { id: "custom", label: "自定义", builtinIds: [] }
 ];
 

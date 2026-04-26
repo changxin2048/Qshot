@@ -161,7 +161,7 @@
   position: absolute;
   top: 0;
   left: calc(100% + 10px);
-  min-width: 240px;
+  min-width: 150px;
   padding: 8px;
   border: 1px solid #e0e0e0;
   border-radius: var(--r-md);
@@ -175,7 +175,7 @@
 }
 
 .hover-picker-submenu--ai {
-  min-width: 340px;
+  min-width: 288px;
 }
 
 .hover-picker-ai-columns {
@@ -184,14 +184,14 @@
 }
 
 .hover-picker-ai-col {
-  flex: 1;
+  flex: 0 0 128px;
   min-width: 0;
 }
 
 .hover-picker-ai-col + .hover-picker-ai-col {
   border-left: 1px solid #ebebeb;
-  padding-left: 4px;
-  margin-left: 4px;
+  padding-left: 8px;
+  margin-left: 8px;
 }
 
 .hover-picker-preset-divider {
@@ -274,8 +274,8 @@
 .hover-picker-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 10px;
   min-height: 40px;
   padding: 0 12px;
   border-radius: var(--r-md);
@@ -287,10 +287,22 @@
 }
 
 .hover-picker-option input {
+  flex-shrink: 0;
   width: 15px;
   height: 15px;
   margin: 0;
   accent-color: #666666;
+}
+
+.hover-picker-option-text {
+  display: block;
+  flex: 0 0 78px;
+  width: 78px;
+  max-width: 78px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hover-picker-site-group + .hover-picker-site-group {

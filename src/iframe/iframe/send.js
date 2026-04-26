@@ -176,6 +176,11 @@ export function navigateByUrlTemplate(ref, query) {
     });
   }
 
+  // 同步更新 _targetSrc，防止队列里待加载的 beginIframeLoad 用旧 URL 覆盖刚设好的 query URL。
+  // 场景：并发槽位满时，TikTok/社媒卡片还在排队，autosend 已调用 navigateByUrlTemplate 设好了带
+  // query 的 src，但之后 beginIframeLoad 才轮到该卡片，若不更新 _targetSrc 会覆盖回空 URL。
+  ref._targetSrc = targetUrl;
+
   setSiteStatus(ref.site.id, "正在通过 URL 直达搜索结果页...");
   diagnosticLog("compare.url", "navigate-start", { site: ref.site, targetUrl });
 

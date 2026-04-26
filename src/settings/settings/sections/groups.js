@@ -3,6 +3,7 @@ import {
   msg,
   SITE_CATEGORIES,
   AI_SITE_GROUPS,
+  SOCIAL_SITE_GROUPS,
   GROUP_MODE_OPTIONS,
   PICKER_CLOSE_DELAY_MS,
 } from "../state.js";
@@ -302,6 +303,7 @@ function createHoverPicker(group) {
       submenu.appendChild(columnsWrap);
 
     } else if (key === "other") {
+      submenu.classList.add("hover-picker-submenu--ai");
       const tip = document.createElement("div");
       tip.className = "hover-picker-tip";
       tip.textContent = msg(
@@ -310,9 +312,29 @@ function createHoverPicker(group) {
       );
       submenu.appendChild(tip);
 
-      categorySites.forEach((site) => {
-        submenu.appendChild(createPickerSiteOption(group, site, key));
+      const columnsWrap = document.createElement("div");
+      columnsWrap.className = "hover-picker-ai-columns";
+
+      SOCIAL_SITE_GROUPS.forEach((marketGroup) => {
+        const groupSites = marketGroup.siteIds
+          .map((siteId) => categorySites.find((site) => site.id === siteId))
+          .filter(Boolean);
+        if (!groupSites.length) return;
+
+        const col = document.createElement("div");
+        col.className = "hover-picker-ai-col";
+
+        const colTitle = document.createElement("div");
+        colTitle.className = "hover-picker-site-group-title";
+        colTitle.textContent = marketGroup.label;
+        col.appendChild(colTitle);
+
+        groupSites.forEach((site) => {
+          col.appendChild(createPickerSiteOption(group, site, key));
+        });
+        columnsWrap.appendChild(col);
       });
+      submenu.appendChild(columnsWrap);
     } else {
       categorySites.forEach((site) => {
         submenu.appendChild(createPickerSiteOption(group, site, key));

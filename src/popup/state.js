@@ -40,7 +40,7 @@ export const state = {
 export function createNormalizedUiPrefs(input) {
   const src = input && typeof input === "object" ? input : {};
   return {
-    showHistory: src.showHistory !== false,
+    showHistory: src.showHistory === true,
     showRandomButton: src.showRandomButton !== false,
     showPromptButton: src.showPromptButton !== false,
     prewarmEnabled: src.prewarmEnabled !== false,
