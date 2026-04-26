@@ -1,7 +1,22 @@
-# Qshot - 子弹搜索
+<p align="center">
+  <img src="icons/icon128.png" width="80" height="80" alt="Qshot Logo">
+</p>
 
-一次提问，同时打开多个 AI 站点对比回答。  
-支持 popup 搜索、`Ctrl+Q` 全局浮层、分组管理、提示词库、自定义站点和结果导出。
+<h1 align="center">Qshot - 子弹搜索</h1>
+
+<p align="center">
+  一次提问，同时打开多个 AI 站点对比回答。<br>
+  支持 popup 搜索、Ctrl+Q 全局浮层、分组管理、提示词库、自定义站点和结果导出。
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Manifest-V3-blue?logo=googlechrome" alt="Manifest V3">
+  <img src="https://img.shields.io/badge/Version-1.1.1-green" alt="Version">
+  <img src="https://img.shields.io/badge/License-GPLv3-blue" alt="License">
+  <img src="https://img.shields.io/badge/Build-esbuild-orange" alt="Build Tool">
+</p>
+
+---
 
 ## 项目定位
 
@@ -13,12 +28,14 @@ Qshot 是一个 Chrome Manifest V3 扩展，核心目标是：
 
 ## 核心功能
 
-- 多站并行搜索（ChatGPT / DeepSeek / Gemini / Claude / Kimi 等）
-- 对比页并排展示回答，支持布局切换
-- 任意网页快捷键 `Ctrl+Q` 唤起悬浮搜索层
-- 搜索分组与站点管理（内置 + 自定义）
-- Prompt 管理、随机问题、历史记录
-- 回答导出（用于整理和复盘）
+| 功能 | 说明 |
+|------|------|
+| 多站并行搜索 | 一次输入，同时发送到多个 AI 站点 |
+| 对比页展示 | 多站回答并排展示，支持布局切换 |
+| 全局快捷搜索 | 任意网页按 `Ctrl+Q` 唤起悬浮层 |
+| 分组与站点管理 | 内置站点 + 自定义站点，按分组快速切换 |
+| Prompt 与历史 | 提示词、随机问题、历史记录统一管理 |
+| 回答导出 | 将对比结果导出，便于复盘和整理 |
 
 ## 安装与使用
 
@@ -26,11 +43,9 @@ Qshot 是一个 Chrome Manifest V3 扩展，核心目标是：
 
 如果你只是使用扩展，不需要看源码：
 
-1. 进入 Qshot 官网（qshot.top）
+1. 进入 Qshot 官网：[qshot.top](https://qshot.top)
 2. 通过官网跳转到 Chrome Web Store 或 Edge Add-ons
 3. 在商店点击安装，安装后即可直接使用
-
-> 建议把官网和商店链接补到这里，方便用户一键安装。
 
 ### 开发者 / 维护者（源码方式）
 
