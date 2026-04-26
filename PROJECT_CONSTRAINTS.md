@@ -24,7 +24,7 @@ D:\Qshot-1.1.1\
 ├── README.md               ← 面向用户（GitHub 首页展示）
 ├── LICENSE                 ← 开源协议（构建时复制进 dist/）
 ├── PRIVACY.md              ← 隐私政策（构建时复制进 dist/）
-├── CLAUDE.md               ← 本文件
+├── PROJECT_CONSTRAINTS.md  ← 本文件
 └── .gitignore              ← 忽略 dist/、node_modules/、_metadata/ 等
 ```
 
@@ -225,7 +225,7 @@ zip 根目录必须直接看到 `manifest.json`（不是 `dist/manifest.json`）
 
 4. **同步 popup 布局**：popup.js 用 `ResizeObserver` 监听 composer 高度变化，`syncComposerLayout` 会根据文本行数切换 `.is-expanded`。如果将来改布局，注意这个回调被 `state.syncComposerLayout` 注册给 sections 和 prompt-edit-modal 使用，避免循环 import。
 
-## 给 Claude 的提示
+## 给 AI 助手的提示
 
 - 改代码前先看对应入口文件（例如改 inject 行为就看 `src/iframe/inject/main.js`），它会 re-export 实际的逻辑模块。
 - 给 content script 加日志时注意：修改后必须**关闭并重开**测试标签页才能看到，刷新扩展页面不够。
