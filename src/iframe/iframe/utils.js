@@ -111,6 +111,19 @@ export function getQuery() {
   return elements.queryInput.value.trim();
 }
 
+export function setQueryInputValue(value, options = {}) {
+  if (!elements.queryInput) {
+    return;
+  }
+
+  elements.queryInput.value = String(value || "");
+  elements.queryInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+  if (options.focus) {
+    elements.queryInput.focus();
+  }
+}
+
 export function ensureCardsNotEmpty() {
   if (state.cardRefs.size > 0) {
     return;

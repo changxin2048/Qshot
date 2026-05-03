@@ -28,6 +28,7 @@ const ENTRIES = [
 // Non-JS assets shipped in the extension — live under src/, mirrored into dist/.
 const SRC_ASSETS = [
   "manifest.json",
+  "_locales",
   "icons",
   "config/initialState.json",
   "config/initialState.zh-CN.json",

@@ -9,14 +9,47 @@ import {
 } from "./dom-utils.js";
 import { setContenteditableValue } from "./editors.js";
 
-export async function executeSiteHandler(query, handlerConfig) {
+// hasFiles=true 时整体把"等按钮可用"的预算调大：
+//   - 上传到各 AI 站点服务器的文件传输普遍 3~15 秒，原配置的 submitWaitMs（多数
+//     1500ms，ChatGPT 3000ms）远远不够。等不到按钮亮起就会回落到 Enter 兜底，
+//     站点会把文本提交但抛弃尚未上传完成的附件。
+//   - 这里用最小值 20s 兜底；个别站点上传特别慢可以在 siteHandlers.json 里给
+//     单独 step 显式调更大的 submitWaitMs，仍然保留 max() 语义。
+const FILES_MIN_SUBMIT_WAIT_MS = 20000;
+const FILES_MIN_FIND_TIMEOUT_MS = 25000;
+
+function applyFilesAwareTimeouts(step) {
+  // 不在原 config 上改写：每次只对 SUBMIT_ACTIONS 类的步骤产出一份补丁副本，
+  // 让 hasFiles 开关只影响本次执行，避免污染全局缓存的 site config。
+  if (step.action !== "smartSubmit" && step.action !== "click") {
+    return step;
+  }
+  const next = { ...step };
+  if (next.action === "smartSubmit") {
+    next.submitWaitMs = Math.max(
+      Number.isFinite(next.submitWaitMs) ? next.submitWaitMs : 0,
+      FILES_MIN_SUBMIT_WAIT_MS
+    );
+  } else if (next.action === "click") {
+    next.timeout = Math.max(
+      Number.isFinite(next.timeout) ? next.timeout : 0,
+      FILES_MIN_FIND_TIMEOUT_MS
+    );
+  }
+  return next;
+}
+
+export async function executeSiteHandler(query, handlerConfig, options = {}) {
   if (!handlerConfig || !Array.isArray(handlerConfig.steps) || handlerConfig.steps.length === 0) {
     throw new Error("无效的站点处理器配置");
   }
 
+  const { hasFiles = false } = options;
   const context = { submitted: false };
 
-  for (const step of handlerConfig.steps) {
+  for (const rawStep of handlerConfig.steps) {
+    const step = hasFiles ? applyFilesAwareTimeouts(rawStep) : rawStep;
+
     if (context.submitted && SUBMIT_ACTIONS.has(step.action)) {
       continue;
     }
@@ -241,7 +274,7 @@ async function executeSmartSubmit(step, query) {
     const candidate = findBestSubmitButton(anchor, submitSelectors);
     if (candidate) {
       activateSubmitButton(candidate);
-      if (step.enterFallbackAfterClick === true && await shouldTryKeyboardFallbackAfterClick(step, query, anchor)) {
+      if (step.enterFallbackAfterClick !== false && await shouldTryKeyboardFallbackAfterClick(step, query, anchor)) {
         const retryCandidate = findBestSubmitButton(anchor, submitSelectors);
         if (retryCandidate && retryCandidate !== candidate) {
           activateSubmitButton(retryCandidate);
@@ -321,7 +354,7 @@ async function shouldTryKeyboardFallbackAfterClick(step, query, anchor) {
   const text = String(query || "").trim();
   if (!text) return false;
 
-  const waitMs = Number.isFinite(step.postClickVerifyMs) ? step.postClickVerifyMs : 600;
+  const waitMs = Number.isFinite(step.postClickVerifyMs) ? step.postClickVerifyMs : 900;
   await delay(waitMs);
 
   const current = readCurrentValueNow(step, anchor);

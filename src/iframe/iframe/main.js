@@ -36,6 +36,7 @@ import {
   closeAddSitePicker,
 } from "./add-site.js";
 import { showExportModal } from "./export.js";
+import { bindFileUploadEvents } from "./file-upload.js";
 
 export function initComparePage() {
   const { applyDomI18n } = window.__QSHOT_I18N__ || {};
@@ -50,6 +51,7 @@ async function start() {
     state._applyDomI18n?.(document);
     cacheElements();
     bindEvents();
+    bindFileUploadEvents();
     hydrateQueryFromUrl();
     updateSendBtnState();
     await restorePreferences();
@@ -97,6 +99,8 @@ function cacheElements() {
   elements.addSiteList = document.getElementById("addSiteList");
   elements.closeAddSitePopoverBtn = document.getElementById("closeAddSitePopoverBtn");
   elements.cardNavStrip = document.getElementById("cardNavStrip");
+  elements.fileUploadBtn = document.getElementById("fileUploadBtn");
+  elements.fileUploadInput = document.getElementById("fileUploadInput");
 }
 
 function bindEvents() {

@@ -228,6 +228,8 @@
 #settingsBtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; }
 #newChatBtn svg { width: 27px; height: 27px; fill: none; stroke: currentColor; }
 #promptAssistBtn svg { width: 27px; height: 27px; }
+#fileUploadBtn svg { width: 27px; height: 27px; fill: currentColor; stroke: none; }
+#fileUploadBtn svg path { fill: currentColor; stroke: none; }
 #addSiteBtn svg { width: 28px; height: 28px; fill: none; stroke: currentColor; }
 #settingsBtn svg path, #newChatBtn svg path, #addSiteBtn svg path, #addSiteBtn svg line { fill: none; stroke: currentColor; }
 .composer-prompt-wrap { margin-left: -2px; }
@@ -376,4 +378,52 @@
 .app-shell.is-sidebar-mode .bottom-composer .card-nav-row {
   position: relative;
   top: 6px;
+}
+
+.iframe-loading-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  background: #ffffff;
+  color: #555;
+  pointer-events: none;
+  transition: opacity .18s ease, visibility .18s ease;
+}
+
+.iframe-loading-panel[hidden] {
+  display: flex;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.iframe-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e5e5;
+  border-top-color: #111;
+  border-radius: 50%;
+  animation: qshot-loading-spin .8s linear infinite;
+}
+
+.iframe-loading-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: #111;
+}
+
+.iframe-loading-text {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+@keyframes qshot-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

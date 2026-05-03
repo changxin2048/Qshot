@@ -1,5 +1,5 @@
 import { state, elements, STORAGE_KEYS } from "./state.js";
-import { createRequestId } from "./utils.js";
+import { createRequestId, setQueryInputValue } from "./utils.js";
 
 export async function savePreferences() {
   await chrome.storage.local.set({
@@ -163,7 +163,7 @@ export function renderHistoryList() {
     item.appendChild(links);
     item.appendChild(deleteBtn);
     item.addEventListener("click", () => {
-      elements.queryInput.value = entry.query;
+      setQueryInputValue(entry.query, { focus: true });
       closeHistoryPanel();
     });
     elements.historyList.appendChild(item);

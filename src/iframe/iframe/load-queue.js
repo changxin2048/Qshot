@@ -1,6 +1,6 @@
 import { state, BASE_CONFIG } from "./state.js";
 import { setSiteStatus } from "./status.js";
-import { renderFallback } from "./cards-render.js";
+import { renderFallback, updateLoadingOverlay } from "./cards-render.js";
 
 // 统一清理 ref 上的 load-delay 和 fallback 定时器。
 // 在重建 iframe（刷新 / 换 src）或关闭卡片之前必须调用一次，
@@ -31,6 +31,7 @@ export function enqueueLoad(ref) {
   if (state.loadQueue.indexOf(ref) >= 0) return;
   state.loadQueue.push(ref);
   setSiteStatus(ref.site.id, "等待加载中…");
+  updateLoadingOverlay(ref, "等待加载中…");
   pumpLoadQueue();
 }
 
@@ -85,6 +86,7 @@ export function beginIframeLoad(ref) {
   // 极端情况下 ref 可能在排队期间被替换成新 iframe，这里以当前 iframeEl 为准。
   iframe.src = targetSrc;
   setSiteStatus(ref.site.id, "正在加载…");
+  updateLoadingOverlay(ref, "正在加载…");
 
   // fallback 超时从"真正开始加载"的时刻算起，和是否排过队无关。
   const timeoutMs = BASE_CONFIG.embedTimeoutMs || 18000;

@@ -1,13 +1,8 @@
 import { state } from "./state.js";
+import { loadBuiltinSites } from "../../shared/site-registry.js";
 
 export async function loadSites() {
-  const response = await fetch(chrome.runtime.getURL("config/siteHandlers.json"));
-  if (!response.ok) {
-    throw new Error("无法加载站点配置");
-  }
-
-  const payload = await response.json();
-  const builtinSites = (payload.sites || []).filter((site) => site.enabled !== false);
+  const builtinSites = (await loadBuiltinSites()).filter((site) => site.enabled !== false);
   const customSites = await loadCustomSitesFromStorage();
   const mergedSites = mergeSiteLists(builtinSites, customSites);
   state.allSites = mergedSites;

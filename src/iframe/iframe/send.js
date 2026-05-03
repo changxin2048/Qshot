@@ -72,7 +72,12 @@ export async function handleSendSelected(options = {}) {
     }
 
     const historyEntryPromise = saveSearchHistory(query, selectedSites).catch(() => null);
-    const results = await Promise.all(selectedSites.map((site) => sendSmartToSite(site, query)));
+    const dispatchStaggerMs = Number.isFinite(BASE_CONFIG.sendDispatchStaggerMs)
+      ? BASE_CONFIG.sendDispatchStaggerMs
+      : 0;
+    const results = await Promise.all(
+      selectedSites.map((site, index) => sendSmartToSite(site, query, index * dispatchStaggerMs))
+    );
     const successCount = results.filter((item) => item && item.ok).length;
     const failedCount = results.length - successCount;
     diagnosticLog("compare.send", "complete", { successCount, failedCount, results });
@@ -126,7 +131,7 @@ export async function maybeAutoSendFromUrl() {
   await handleSendSelected({ clearInputAfterSend: true });
 }
 
-export async function sendSmartToSite(site, query) {
+export async function sendSmartToSite(site, query, dispatchDelayMs = 0) {
   const ref = state.cardRefs.get(site.id);
   if (!ref || !ref.iframeEl) {
     diagnosticLog("compare.site", "missing-iframe", { site });
@@ -146,15 +151,17 @@ export async function sendSmartToSite(site, query) {
     diagnosticLog("compare.site", "wait-for-iframe-load", { site });
     return new Promise((resolve) => {
       ref.pendingQuery = query;
+      ref.pendingQueryDelayMs = dispatchDelayMs;
       ref.pendingQueryResolver = resolve;
       setSiteStatus(site.id, "卡片加载中，完成后将自动发送...");
     });
   }
 
   ref.pendingQuery = "";
+  ref.pendingQueryDelayMs = 0;
   ref.pendingQueryResolver = null;
   diagnosticLog("compare.site", "dispatch-route", { site });
-  return dispatchSearchWithRetries(ref, query, 0);
+  return dispatchSearchWithRetries(ref, query, dispatchDelayMs);
 }
 
 export function navigateByUrlTemplate(ref, query) {
@@ -427,6 +434,7 @@ export function abortPendingWorkForSite(siteId) {
     const resolver = ref.pendingQueryResolver;
     ref.pendingQueryResolver = null;
     ref.pendingQuery = "";
+    ref.pendingQueryDelayMs = 0;
     try {
       resolver({ ok: false, siteId, error: "卡片已关闭" });
     } catch (_e) {

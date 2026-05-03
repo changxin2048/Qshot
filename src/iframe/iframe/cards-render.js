@@ -16,6 +16,7 @@ import {
   updateScrollEdgeBtns,
 } from "./layout.js";
 import { dispatchSearchWithRetries, abortPendingWorkForSite } from "./send.js";
+import { dispatchPendingFilesForCard } from "./file-upload.js";
 
 export function renderCards() {
   elements.iframesContainer.innerHTML = "";
@@ -170,13 +171,16 @@ export function createSiteCard(site) {
     statusEl: status,
     bodyEl: body,
     iframeEl: null,
+    loadingEl: null,
     hoverActionEl: hoverActions,
     jumpBtnEl: jumpBtn,
     refreshBtnEl: refreshBtn,
     closeBtnEl: closeBtn,
     loaded: false,
     pendingQuery: "",
+    pendingQueryDelayMs: 0,
     pendingQueryResolver: null,
+    pendingFilesOnLoad: [],
     currentUrl: site.url,
     // 本张卡片当前 iframe 相关的两个定时器：
     //   loadDelayTimerId：错峰加载排队中，到点给 iframe 赋 src
@@ -202,7 +206,9 @@ export function refreshSiteCard(ref, options = {}) {
   const { immediate = true } = options;
   ref.loaded = false;
   ref.pendingQuery = "";
+  ref.pendingQueryDelayMs = 0;
   ref.pendingQueryResolver = null;
+  ref.pendingFilesOnLoad = [];
   ref.iframeEl = null;
   createIframeBody(ref, { immediate });
   setSiteStatus(ref.site.id, "正在重新加载…");
@@ -234,6 +240,8 @@ export function createIframeBody(ref, options = {}) {
   ref._loadState = loadState;
   ref._targetSrc = buildSiteUrl(ref.site, "");
 
+  const loading = createLoadingOverlay(ref.site.name, immediate ? "正在加载…" : "等待加载中…");
+
   iframe.addEventListener("load", () => {
     // 守卫 1：iframe 可能已被替换（刷新 / 关闭），当前 ref 不再持有这张 iframe 就忽略。
     if (ref.iframeEl !== iframe) return;
@@ -247,20 +255,27 @@ export function createIframeBody(ref, options = {}) {
     ref.currentUrl = currentSrc;
     clearIframeTimers(ref);
     releaseLoadSlot(ref);
+    hideLoadingOverlay(ref);
     setSiteStatus(ref.site.id, "iframe 已加载，可直接在卡片内操作。");
 
     if (ref.pendingQuery) {
       const queuedQuery = ref.pendingQuery;
+      const queuedDelayMs = Number.isFinite(ref.pendingQueryDelayMs) ? ref.pendingQueryDelayMs : 0;
       const queuedResolver = ref.pendingQueryResolver;
       ref.pendingQuery = "";
+      ref.pendingQueryDelayMs = 0;
       ref.pendingQueryResolver = null;
-      dispatchSearchWithRetries(ref, queuedQuery, 0)
+      dispatchSearchWithRetries(ref, queuedQuery, queuedDelayMs)
         .then((result) => {
           if (typeof queuedResolver === "function") {
             queuedResolver(result);
           }
         });
     }
+
+    // 卡片在加载完成前用户可能已经选好了文件，dispatchPendingFilesForCard
+    // 会把挂在 ref.pendingFilesOnLoad 上的那一批文件 postMessage 进去。
+    dispatchPendingFilesForCard(ref);
   });
 
   iframe.addEventListener("error", () => {
@@ -275,8 +290,10 @@ export function createIframeBody(ref, options = {}) {
 
   // 先把 iframe 节点插入 DOM（不赋 src），再决定走立即加载还是入队。
   ref.bodyEl.innerHTML = "";
+  ref.bodyEl.appendChild(loading);
   ref.bodyEl.appendChild(iframe);
   ref.iframeEl = iframe;
+  ref.loadingEl = loading;
 
   if (immediate) {
     // 立即加载路径不占用普通槽位，用户主动操作瞬时突破上限是可接受的。
@@ -290,6 +307,7 @@ export function createIframeBody(ref, options = {}) {
 export function renderFallback(ref, message) {
   // 进入 fallback 意味着当前 iframe 已作废，同时收掉本张卡片残留的加载/超时定时器。
   clearIframeTimers(ref);
+  ref.loadingEl = null;
   ref.bodyEl.innerHTML = `
     <div class="fallback-panel">
       <div class="warning-box">
@@ -322,4 +340,28 @@ export function renderFallback(ref, message) {
     ref.cardEl.appendChild(ref.hoverActionEl);
   }
   setSiteStatus(ref.site.id, "该站点暂时无法在卡片内嵌入。");
+}
+
+function createLoadingOverlay(siteName, message) {
+  const loading = document.createElement("div");
+  loading.className = "iframe-loading-panel";
+  loading.setAttribute("aria-live", "polite");
+  loading.innerHTML = `
+    <div class="iframe-loading-spinner" aria-hidden="true"></div>
+    <div class="iframe-loading-title">${escapeHtml(siteName)}</div>
+    <div class="iframe-loading-text">${escapeHtml(message)}</div>
+  `;
+  return loading;
+}
+
+export function updateLoadingOverlay(ref, message) {
+  const textEl = ref?.loadingEl?.querySelector(".iframe-loading-text");
+  if (textEl) {
+    textEl.textContent = message;
+  }
+}
+
+function hideLoadingOverlay(ref) {
+  if (!ref?.loadingEl) return;
+  ref.loadingEl.hidden = true;
 }

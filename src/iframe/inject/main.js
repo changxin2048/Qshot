@@ -2,11 +2,14 @@ import { EXTENSION_ORIGIN } from "./constants.js";
 import { executeSiteHandler } from "./executor.js";
 import { handleExtractRequest } from "./extractor.js";
 import { initEmbedSidebarFix } from "./sidebar-fix.js";
+import { deliverFilesToInput, extractInputSelectorsFromHandler } from "./file-paste.js";
 import { diagnosticLog } from "../../shared/diagnostics.js";
+import { findBuiltinSiteForHost } from "../../shared/site-registry.js";
 
-const registryCache = { sites: null };
 const requestResults = new Map();
 const requestsInProgress = new Set();
+const REQUEST_RESULT_TTL_MS = 5 * 60 * 1000;
+const REQUEST_RESULT_MAX = 80;
 let lastReportedUrl = "";
 
 async function handleSearchRequest(message) {
@@ -35,12 +38,57 @@ async function handleSearchRequest(message) {
       hostname: window.location.hostname,
       query,
     });
+
     await executeSiteHandler(query, site.searchHandler);
-    reportCurrentUrl(site);
+    scheduleUrlReports(site);
     diagnosticLog("inject.search", "handler-success", { site });
-    return { ok: true, siteId: site.id, message: "已在当前卡片中尝试写入查询并触发发送" };
+    return {
+      ok: true,
+      siteId: site.id,
+      message: "已在当前卡片中尝试写入查询并触发发送",
+      currentUrl: window.location.href
+    };
   } catch (error) {
     diagnosticLog("inject.search", "handler-error", { site, error: error.message });
+    return { ok: false, siteId: site.id, error: error.message };
+  }
+}
+
+// 独立的文件分发流程：用户一旦在父页选定文件就立刻执行，和 query/submit 完全解耦。
+// 这样上传过程对用户可见（每张卡片各自的输入框上方出现附件 chip），后续提交文本时
+// 站点的发送按钮逻辑会自动把"上传完成才允许提交"做掉，避免合并发送时遇到的
+// race condition（文本已点 send 但文件还在上行）。
+async function handleFilesPasteRequest(message) {
+  const files = Array.isArray(message.files) ? message.files : [];
+  if (files.length === 0) {
+    return { ok: false, siteId: message.site?.id, error: "无文件可粘贴" };
+  }
+
+  const site = await resolveSite(message.site);
+  if (!site) {
+    return {
+      ok: false,
+      siteId: message.site?.id,
+      error: `当前页面未匹配到站点配置: ${window.location.hostname}`,
+    };
+  }
+
+  try {
+    const inputSelectors = extractInputSelectorsFromHandler(site.searchHandler);
+    diagnosticLog("inject.paste-files", "start", {
+      site,
+      fileCount: files.length,
+      usedSelectors: inputSelectors,
+    });
+    const delivered = await deliverFilesToInput(files, inputSelectors);
+    diagnosticLog("inject.paste-files", "complete", { site, delivered });
+    return {
+      ok: !!delivered,
+      siteId: site.id,
+      message: delivered ? `已粘贴 ${files.length} 个文件` : "未能派发到输入框",
+    };
+  } catch (error) {
+    diagnosticLog("inject.paste-files", "error", { site, error: error.message });
     return { ok: false, siteId: site.id, error: error.message };
   }
 }
@@ -49,48 +97,12 @@ async function resolveSite(explicitSite) {
   if (explicitSite && explicitSite.searchHandler) {
     return explicitSite;
   }
-  const registry = await loadRegistry();
-  return registry.find((site) => siteMatchesHost(site, window.location.hostname));
-}
-
-async function loadRegistry() {
-  if (registryCache.sites) return registryCache.sites;
-  // Use an already-cached empty list as a graceful fallback. This matters
-  // because the fetch can fail in two ways on random third-party pages:
-  //   (a) the resource isn't listed in web_accessible_resources (shouldn't
-  //       happen anymore, but belt & suspenders), or
-  //   (b) an ad/privacy blocker in the user's browser intercepts the
-  //       chrome-extension:// URL and returns ERR_BLOCKED_BY_CLIENT.
-  // Without this guard every content-script caller (URL reporting, sidebar
-  // fix, message listener) throws an uncaught promise rejection on every
-  // page load.
   try {
-    const response = await fetch(chrome.runtime.getURL("config/siteHandlers.json"));
-    if (!response.ok) throw new Error("无法读取站点配置");
-    const payload = await response.json();
-    registryCache.sites = payload.sites || [];
+    return await findBuiltinSiteForHost(window.location.hostname, { fallbackEmpty: true });
   } catch (_error) {
     diagnosticLog("inject.registry", "load-failed", { error: _error.message });
-    registryCache.sites = [];
+    return null;
   }
-  return registryCache.sites;
-}
-
-function siteMatchesHost(site, hostname) {
-  const normalizedHost = normalizeHost(hostname);
-  const patterns = Array.isArray(site.matchPatterns) ? site.matchPatterns : [];
-  return patterns.some(
-    (pattern) =>
-      normalizedHost === normalizeHost(pattern) ||
-      normalizedHost.endsWith(`.${normalizeHost(pattern)}`)
-  );
-}
-
-function normalizeHost(hostname) {
-  return String(hostname || "")
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "")
-    .replace(/\/.*$/, "");
 }
 
 function notifyParentFrame(result) {
@@ -103,12 +115,13 @@ function notifyParentFrame(result) {
     diagnosticLog("inject.message", "notify-parent", result);
     window.parent.postMessage(
       {
-        type: "QSHOT_RESULT",
+        type: result.type || "QSHOT_RESULT",
         siteId: result.siteId,
         requestId: result.requestId,
         ok: result.ok,
         message: result.message,
         error: result.error,
+        currentUrl: result.currentUrl,
       },
       targetOrigin
     );
@@ -173,6 +186,13 @@ function reportCurrentUrl(site) {
   }
 }
 
+function scheduleUrlReports(site) {
+  reportCurrentUrl(site);
+  [800, 2000, 5000, 10000].forEach((delayMs) => {
+    window.setTimeout(() => reportCurrentUrl(site), delayMs);
+  });
+}
+
 function installRuntimeMessageListener() {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || message.type !== "SEARCH_SITE_QUERY") return false;
@@ -209,6 +229,29 @@ function installWindowMessageListener() {
       return;
     }
 
+    if (event.data.type === "QSHOT_PASTE_FILES") {
+      const requestId = event.data.requestId;
+      diagnosticLog("inject.message", "paste-files-received", {
+        site: event.data.site,
+        requestId,
+        fileCount: Array.isArray(event.data.files) ? event.data.files.length : 0,
+      });
+      handleFilesPasteRequest(event.data)
+        .then((result) => {
+          notifyParentFrame({ ...result, requestId, type: "QSHOT_PASTE_RESULT" });
+        })
+        .catch((error) => {
+          notifyParentFrame({
+            ok: false,
+            siteId: event.data.site?.id,
+            requestId,
+            type: "QSHOT_PASTE_RESULT",
+            error: error.message,
+          });
+        });
+      return;
+    }
+
     if (event.data.type !== "QSHOT_SEARCH") return;
 
     const requestId = event.data.requestId;
@@ -217,9 +260,10 @@ function installWindowMessageListener() {
       requestId,
       query: event.data.query,
     });
-    if (requestId && requestResults.has(requestId)) {
+    const cachedResult = requestId ? getCachedRequestResult(requestId) : null;
+    if (cachedResult) {
       diagnosticLog("inject.message", "return-cached-result", { requestId, site: event.data.site });
-      notifyParentFrame(requestResults.get(requestId));
+      notifyParentFrame(cachedResult);
       return;
     }
     if (requestId && requestsInProgress.has(requestId)) {
@@ -232,7 +276,7 @@ function installWindowMessageListener() {
       .then((result) => {
         const finalResult = { ...result, requestId };
         if (requestId) {
-          requestResults.set(requestId, finalResult);
+          storeRequestResult(requestId, finalResult);
           requestsInProgress.delete(requestId);
         }
         notifyParentFrame(finalResult);
@@ -245,12 +289,40 @@ function installWindowMessageListener() {
           error: error.message,
         };
         if (requestId) {
-          requestResults.set(requestId, finalResult);
+          storeRequestResult(requestId, finalResult);
           requestsInProgress.delete(requestId);
         }
         notifyParentFrame(finalResult);
       });
   });
+}
+
+function getCachedRequestResult(requestId) {
+  pruneRequestResults();
+  return requestResults.get(requestId)?.result || null;
+}
+
+function storeRequestResult(requestId, result) {
+  requestResults.set(requestId, {
+    result,
+    storedAt: Date.now()
+  });
+  pruneRequestResults();
+}
+
+function pruneRequestResults() {
+  const now = Date.now();
+  for (const [requestId, entry] of requestResults) {
+    if (!entry || now - entry.storedAt > REQUEST_RESULT_TTL_MS) {
+      requestResults.delete(requestId);
+    }
+  }
+
+  while (requestResults.size > REQUEST_RESULT_MAX) {
+    const oldestKey = requestResults.keys().next().value;
+    if (!oldestKey) break;
+    requestResults.delete(oldestKey);
+  }
 }
 
 export function initInjectScript() {

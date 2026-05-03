@@ -52,6 +52,7 @@
               "button[type='submit']"
             ],
             "submitWaitMs": 3000,
+            "postClickVerifyMs": 1000,
             "description": "轮询发送按钮由 aria-disabled 切换为可用后立即点击（ChatGPT 冷启动水合较慢，等长一点）"
           },
           {
@@ -117,7 +118,8 @@
               "[role='button'][aria-label*='Send']",
               "div[role='button'][tabindex='0']"
             ],
-            "submitWaitMs": 1500
+            "submitWaitMs": 2500,
+            "postClickVerifyMs": 1000
           },
           {
             "action": "sendKeys",
@@ -183,7 +185,8 @@
               "[role='button'][aria-label*='Send']",
               "div[role='button'][tabindex='0']"
             ],
-            "submitWaitMs": 1500
+            "submitWaitMs": 2500,
+            "postClickVerifyMs": 1000
           },
           {
             "action": "sendKeys",
@@ -411,7 +414,8 @@
               "[role='button'][aria-label*='Send']",
               "[role='button'][aria-label*='发送']"
             ],
-            "submitWaitMs": 2000
+            "submitWaitMs": 2500,
+            "postClickVerifyMs": 1000
           },
           {
             "action": "sendKeys",
@@ -488,7 +492,9 @@
               "[role='button'][aria-label*='Send']",
               "[role='button'][aria-label*='Submit']",
               "[role='button'][aria-label*='发送']"
-            ]
+            ],
+            "submitWaitMs": 3000,
+            "postClickVerifyMs": 1000
           },
           {
             "action": "sendKeys",

@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Qshot-子弹搜索",
-  "version": "1.1.1",
-  "description": "Qshot-让搜索更快、更全面。让你同时调用多个 AI 搜索、快速搜索跳转任意网站",
+  "name": "__MSG_extensionName__",
+  "version": "1.1.2",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

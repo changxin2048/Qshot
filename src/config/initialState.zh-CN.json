@@ -2,76 +2,60 @@
   "version": 1,
   "searchGroups": [
     {
-      "id": "default-hunza",
+      "enabled": true,
+      "id": "default-compare",
+      "mode": "compare",
       "name": "混搭搜索",
-      "enabled": true,
-      "mode": "compare",
       "siteIds": [
-        "kimi",
         "chatgpt",
-        "metaso",
-        "gemini",
-        "grok",
-        "claude",
-        "deepseek",
         "doubao",
-        "qwen",
-        "yuanbao"
+        "gemini",
+        "deepseek",
+        "kimi"
       ]
     },
     {
-      "id": "default-overseas",
-      "name": "海外模型",
       "enabled": true,
+      "id": "group_1776588656250",
       "mode": "compare",
+      "name": "海外模型",
       "siteIds": [
         "gemini",
-        "chatgpt"
+        "chatgpt",
+        "claude",
+        "grok"
       ]
     },
     {
-      "id": "default-domestic",
-      "name": "国内模型",
       "enabled": true,
+      "id": "default-tabs",
       "mode": "compare",
+      "name": "国内模型",
       "siteIds": [
         "deepseek",
         "doubao",
         "kimi",
-        "metaso"
+        "metaso",
+        "yuanbao",
+        "qwen"
       ]
     },
     {
-      "id": "default-single",
-      "name": "单个模型",
       "enabled": true,
+      "id": "group_1776657819289",
       "mode": "tabs",
+      "name": "单个模型",
       "siteIds": [
         "gemini"
       ]
     },
     {
-      "id": "group_1777097613383",
-      "name": "社媒平台",
       "enabled": true,
+      "id": "group_1776658879561",
       "mode": "tabs",
+      "name": "30aitool",
       "siteIds": [
-        "xiaohongshu",
-        "bilibili",
-        "zhihu",
-        "douyin"
-      ]
-    },
-    {
-      "id": "default-social-overseas",
-      "name": "海外社媒",
-      "enabled": true,
-      "mode": "tabs",
-      "siteIds": [
-        "twitter",
-        "youtube",
-        "reddit",
-        "tiktok"
+        "custom_1776658836588_in6l5"
       ]
     }
   ],
@@ -129,7 +113,20 @@
       ]
     }
   ],
-  "customSites": [],
+  "customSites": [
+    {
+      "id": "custom_1776658836588_in6l5",
+      "name": "30aitool",
+      "url": "https://www.30aitool.com/?s={query}",
+      "enabled": true,
+      "supportIframe": true,
+      "supportUrlQuery": true,
+      "matchPatterns": [
+        "30aitool.com"
+      ],
+      "isCustom": true
+    }
+  ],
   "uiPrefs": {
     "showHistory": false,
     "showRandomButton": true,

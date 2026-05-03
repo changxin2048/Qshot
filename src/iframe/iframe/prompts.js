@@ -5,7 +5,7 @@ import {
   getDisplayPromptEntries,
 } from "../../shared/prompt-groups.js";
 import { state, elements, STORAGE_KEYS, promptPreview } from "./state.js";
-import { escapeHtml } from "./utils.js";
+import { escapeHtml, setQueryInputValue } from "./utils.js";
 
 export function bindPromptPickerEvents() {
   document.addEventListener("click", (event) => {
@@ -212,7 +212,10 @@ export function renderPromptPicker() {
     promptPreview.mgr = promptPreview.mgr || window.PromptItemUI.createPreviewManager(null);
     entries.forEach(({ prompt, sourceGroup }) => {
       const item = window.PromptItemUI.createItem(prompt, {
-        onFill: (p) => { elements.queryInput.value = p.content || ""; closePromptPicker(); elements.queryInput.focus(); },
+        onFill: (p) => {
+          setQueryInputValue(p.content || "", { focus: true });
+          closePromptPicker();
+        },
         onEdit: (p) => openPromptEditModal(p, sourceGroup.id),
         previewManager: promptPreview.mgr,
       });
