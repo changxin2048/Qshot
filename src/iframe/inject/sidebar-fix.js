@@ -52,6 +52,8 @@ export async function initEmbedSidebarFix(resolveSite) {
       "[class*='sidebar'], [class*='side-bar'], [class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
       "aside, nav, [role='navigation'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
       "div:has(> aside), div:has(> nav), div:has([class*='sidebar']):not(:has(textarea)):not(:has([contenteditable='true'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+      "/* structural fallback: hide sidebar by DOM position regardless of class names */",
+      "#root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
       "main, [role='main'], [class*='chat-main'], [class*='main-content'], [class*='conversation'] { flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding-left: 0 !important; margin-left: 0 !important; transform: none !important; }",
     ],
     qwen: [
@@ -135,6 +137,8 @@ function installEarlyDeepSeekSidebarCss() {
     "[class*='sidebar'], [class*='side-bar'], [class*='sider'], [class*='drawer'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
     "[class*='mask'], [class*='overlay'], [class*='backdrop'] { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }",
     "main, [role='main'], [class*='chat-main'], [class*='main-content'] { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding-left: 0 !important; transform: none !important; }",
+    "/* structural fallback: hide first non-input sibling in root layout regardless of class names */",
+    "#root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
   ].join("\n");
 
   (document.head || document.documentElement).appendChild(style);
@@ -198,6 +202,25 @@ function suppressDeepSeekSidebar() {
       forceHideElement(element);
     }
   });
+
+  // 结构性扫描：类名哈希化时上面的选择器会全部失效，
+  // 这里从 #root 出发递归遍历，用文字内容+位置检测侧边栏。
+  const root = document.getElementById("root");
+  if (root) {
+    scanDeepSeekTree(root, 0);
+  }
+}
+
+function scanDeepSeekTree(parent, depth) {
+  if (depth > 4) return;
+  for (const child of Array.from(parent.children)) {
+    if (child.dataset.qshotDeepseekHidden === "true") continue;
+    if (isDeepSeekSidebarLike(child) || isDeepSeekBackdropLike(child)) {
+      forceHideElement(child);
+    } else {
+      scanDeepSeekTree(child, depth + 1);
+    }
+  }
 }
 
 function isDeepSeekSidebarLike(element) {

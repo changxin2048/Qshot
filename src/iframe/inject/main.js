@@ -326,8 +326,15 @@ function pruneRequestResults() {
 }
 
 export function initInjectScript() {
-  setupUrlReporting();
+  const isGrokFrame = window.parent !== window && /(^|\.)grok\.com$/i.test(window.location.hostname);
+  // Grok 对 iframe 启动环境很敏感。不要在它启动前 patch history
+  // 或注入隐藏侧边栏 CSS；只保留消息监听，保证后续仍可自动发送。
+  if (!isGrokFrame) {
+    setupUrlReporting();
+  }
   installRuntimeMessageListener();
   installWindowMessageListener();
-  initEmbedSidebarFix(resolveSite);
+  if (!isGrokFrame) {
+    initEmbedSidebarFix(resolveSite);
+  }
 }

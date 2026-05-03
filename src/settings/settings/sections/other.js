@@ -9,6 +9,7 @@ import {
   persistAll,
   createNormalizedGroups,
   createNormalizedCustomSites,
+  mergeSites,
 } from "../store.js";
 
 export function renderOtherSection() {
@@ -206,11 +207,13 @@ async function handleSearchConfigImportFile(event) {
   ].join("\n"));
   if (!confirmed) return;
 
-  if (importedGroups.length) {
-    state.groups = createNormalizedGroups(importedGroups);
-  }
   if (importedCustomSites.length) {
     state.customSites = createNormalizedCustomSites(importedCustomSites);
+    const builtinSites = state.sites.filter((site) => !site.isCustom);
+    state.sites = mergeSites(builtinSites, state.customSites);
+  }
+  if (importedGroups.length) {
+    state.groups = createNormalizedGroups(importedGroups);
   }
 
   await persistAll();

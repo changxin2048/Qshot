@@ -383,20 +383,43 @@ export function renderPromptPicker() {
   state.promptGroups.forEach((group) => {
     const button = document.createElement("button");
     button.type = "button";
+    button.dataset.groupId = group.id;
     button.className = `popup-prompt-group-item${group.id === activeGroup.id ? " is-active" : ""}`;
     button.textContent = getPromptGroupDisplayName(group);
     button.addEventListener("mouseenter", () => {
       if (state.activePromptGroupId === group.id) return;
       state.activePromptGroupId = group.id;
-      renderPromptPicker();
+      switchPopupPromptGroup(state, promptPicker, queryInput);
     });
     button.addEventListener("click", () => {
+      if (state.activePromptGroupId === group.id) return;
       state.activePromptGroupId = group.id;
-      renderPromptPicker();
+      switchPopupPromptGroup(state, promptPicker, queryInput);
     });
     groupsColumn.appendChild(button);
   });
 
+  promptPicker.appendChild(groupsColumn);
+  promptPicker.appendChild(buildPopupPromptsColumn(state, activeGroup, queryInput));
+
+  const footer = document.createElement("div");
+  footer.className = "popup-prompt-picker-footer";
+  const settingsLink = document.createElement("button");
+  settingsLink.type = "button";
+  settingsLink.className = "popup-prompt-picker-settings-btn";
+  settingsLink.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>${msg("popup_managePrompts", "管理提示词")}`;
+  settingsLink.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await chrome.runtime.sendMessage({ type: "OPEN_SETTINGS_PAGE", section: "prompts" });
+    window.close();
+  });
+  footer.appendChild(settingsLink);
+  promptPicker.appendChild(footer);
+
+  state.updatePromptPickerLayoutState();
+}
+
+function buildPopupPromptsColumn(state, activeGroup, queryInput) {
   const promptsColumn = document.createElement("div");
   promptsColumn.className = "popup-prompt-list";
 
@@ -432,23 +455,28 @@ export function renderPromptPicker() {
       promptsColumn.appendChild(item);
     });
   }
+  return promptsColumn;
+}
 
-  promptPicker.appendChild(groupsColumn);
-  promptPicker.appendChild(promptsColumn);
+function switchPopupPromptGroup(state, promptPicker, queryInput) {
+  if (!promptPicker || promptPicker.hidden) return;
 
-  const footer = document.createElement("div");
-  footer.className = "popup-prompt-picker-footer";
-  const settingsLink = document.createElement("button");
-  settingsLink.type = "button";
-  settingsLink.className = "popup-prompt-picker-settings-btn";
-  settingsLink.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>${msg("popup_managePrompts", "管理提示词")}`;
-  settingsLink.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    await chrome.runtime.sendMessage({ type: "OPEN_SETTINGS_PAGE", section: "prompts" });
-    window.close();
+  // 只更新左侧分类按钮激活状态，不重建左侧
+  promptPicker.querySelectorAll(".popup-prompt-group-item").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.groupId === state.activePromptGroupId);
   });
-  footer.appendChild(settingsLink);
-  promptPicker.appendChild(footer);
 
-  state.updatePromptPickerLayoutState();
+  // 仅替换右侧提示词列表
+  const activeGroup =
+    state.promptGroups.find((g) => g.id === state.activePromptGroupId) || state.promptGroups[0];
+  if (!activeGroup) return;
+
+  const oldList = promptPicker.querySelector(".popup-prompt-list");
+  const newList = buildPopupPromptsColumn(state, activeGroup, queryInput);
+  if (oldList) {
+    oldList.replaceWith(newList);
+  } else {
+    const footer = promptPicker.querySelector(".popup-prompt-picker-footer");
+    promptPicker.insertBefore(newList, footer || null);
+  }
 }

@@ -804,16 +804,16 @@
     {
       "id": "bilibili",
       "name": "B站",
-      "url": "https://search.bilibili.com/",
+      "url": "https://search.bilibili.com/all?keyword={query}",
       "enabled": true,
       "supportIframe": true,
-      "supportUrlQuery": false,
+      "supportUrlQuery": true,
       "matchPatterns": [
         "search.bilibili.com",
         "www.bilibili.com",
         "bilibili.com"
       ],
-      "notes": "优先在页面内 iframe 卡片中加载 B站搜索页，默认尝试填写搜索框并提交。",
+      "notes": "优先通过固定 URL 直达 B站搜索结果页。",
       "searchHandler": {
         "steps": [
           {

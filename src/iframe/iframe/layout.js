@@ -151,8 +151,14 @@ export function updateLayoutUi() {
     medium: 640,
     large: 960
   };
+  const socialMediaWidthMap = {
+    small: 640,
+    medium: 760,
+    large: 960
+  };
 
   let effectiveWidth = singleRowWidthMap[state.cardSizeLevel] || singleRowWidthMap.medium;
+  const socialMediaWidth = socialMediaWidthMap[state.cardSizeLevel] || socialMediaWidthMap.medium;
   let rowHeight = "calc(100vh - 163px)";
   if (state.layoutRows > 1) {
     rowHeight = state.layoutRows === 2
@@ -168,6 +174,7 @@ export function updateLayoutUi() {
   }
 
   elements.iframesContainer.style.setProperty("--effective-card-width", `${effectiveWidth}px`);
+  elements.iframesContainer.style.setProperty("--social-media-card-width", `${socialMediaWidth}px`);
   elements.iframesContainer.style.setProperty("--row-height", rowHeight);
   document.documentElement.style.setProperty("--card-width", `${effectiveWidth}px`);
   elements.iframesContainer.dataset.layoutRows = String(state.layoutRows);

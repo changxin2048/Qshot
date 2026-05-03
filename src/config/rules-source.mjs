@@ -49,16 +49,9 @@ const HOST_RULES = [
   { host: "www.zhihu.com" },
   { host: "douyin.com" },
   { host: "www.douyin.com" },
-  // Grok 在第三方 iframe 下白屏，单独放宽：
-  // - 加 Upgrade-Insecure-Requests 模仿顶层导航
-  // - 同时覆盖 main_frame，便于 chrome.tabs 直接打开时也吃规则
-  {
-    host: "grok.com",
-    extraRequestHeaders: [
-      { header: "Upgrade-Insecure-Requests", operation: "set", value: "1" },
-    ],
-    resourceTypes: ["main_frame", "sub_frame"],
-  },
+  // 0424 存档里 Grok 可显示时就是这条最小规则；不要额外加
+  // main_frame / COOP / COEP / Upgrade-Insecure-Requests，避免触发白屏分支。
+  { host: "grok.com" },
   { host: "www.kimi.com" },
   { host: "kimi.com" },
   { host: "www.qianwen.com" },
@@ -92,6 +85,15 @@ function buildHostRule(entry, id) {
   const requestHeaders = entry.extraRequestHeaders
     ? [...COMMON_REQUEST_HEADERS, ...entry.extraRequestHeaders]
     : COMMON_REQUEST_HEADERS;
+  const responseHeaders = entry.extraResponseHeadersRemove
+    ? [
+        ...COMMON_RESPONSE_HEADERS,
+        ...entry.extraResponseHeadersRemove.map((header) => ({
+          header,
+          operation: "remove",
+        })),
+      ]
+    : COMMON_RESPONSE_HEADERS;
   const resourceTypes = entry.resourceTypes || ["sub_frame"];
 
   return {
@@ -100,10 +102,10 @@ function buildHostRule(entry, id) {
     action: {
       type: "modifyHeaders",
       requestHeaders,
-      responseHeaders: COMMON_RESPONSE_HEADERS,
+      responseHeaders,
     },
     condition: {
-      urlFilter: `||${entry.host}/`,
+      urlFilter: entry.urlFilter || `||${entry.host}/`,
       resourceTypes,
     },
   };

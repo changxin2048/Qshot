@@ -181,6 +181,7 @@ export function renderPromptPicker() {
   state.promptGroups.forEach((group) => {
     const button = document.createElement("button");
     button.type = "button";
+    button.dataset.groupId = group.id;
     button.className = `popup-prompt-group-item${group.id === activeGroup.id ? " is-active" : ""}`;
     button.textContent = getPromptGroupDisplayName(group);
     button.addEventListener("mouseenter", () => {
@@ -188,15 +189,23 @@ export function renderPromptPicker() {
         return;
       }
       state.activePromptGroupId = group.id;
-      renderPromptPicker();
+      switchPromptGroup();
     });
     button.addEventListener("click", () => {
+      if (state.activePromptGroupId === group.id) {
+        return;
+      }
       state.activePromptGroupId = group.id;
-      renderPromptPicker();
+      switchPromptGroup();
     });
     groupsColumn.appendChild(button);
   });
 
+  elements.promptPicker.appendChild(groupsColumn);
+  elements.promptPicker.appendChild(buildPromptsColumn(activeGroup));
+}
+
+function buildPromptsColumn(activeGroup) {
   const promptsColumn = document.createElement("div");
   promptsColumn.className = "popup-prompt-list";
 
@@ -222,9 +231,29 @@ export function renderPromptPicker() {
       promptsColumn.appendChild(item);
     });
   }
+  return promptsColumn;
+}
 
-  elements.promptPicker.appendChild(groupsColumn);
-  elements.promptPicker.appendChild(promptsColumn);
+function switchPromptGroup() {
+  if (!elements.promptPicker || elements.promptPicker.hidden) return;
+
+  // 只更新左侧分类按钮的激活状态，不重建左侧
+  elements.promptPicker.querySelectorAll(".popup-prompt-group-item").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.groupId === state.activePromptGroupId);
+  });
+
+  // 仅替换右侧提示词列表
+  const activeGroup =
+    state.promptGroups.find((g) => g.id === state.activePromptGroupId) || state.promptGroups[0];
+  if (!activeGroup) return;
+
+  const oldList = elements.promptPicker.querySelector(".popup-prompt-list");
+  const newList = buildPromptsColumn(activeGroup);
+  if (oldList) {
+    oldList.replaceWith(newList);
+  } else {
+    elements.promptPicker.appendChild(newList);
+  }
 }
 
 // Keep DEFAULT_PROMPT_GROUP_ID imported so tree-shaking doesn't drop it;

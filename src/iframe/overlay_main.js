@@ -1,11 +1,36 @@
 import { matchShortcut, normalizeShortcut } from "../shared/shortcut.js";
 
+const __QSHOT_IS_GROK_SUBFRAME__ = (() => {
+  if (window === window.top) {
+    return false;
+  }
+  try {
+    return window.location.hostname.replace(/^www\./, "").toLowerCase() === "grok.com";
+  } catch (_error) {
+    return false;
+  }
+})();
+
 // Framebusting 防御：第三方站点（YouTube/Reddit/X/TikTok 等）经常用脚本检测是否在 iframe 内，
 // 然后通过 top.location 跳出 / 重定向到主页。这里在 MAIN world 拦截这些常见模式。
 (function installFramebustingGuard() {
+  if (__QSHOT_IS_GROK_SUBFRAME__) return;
   if (window.__QSHOT_FRAMEBUST_GUARD__) return;
   window.__QSHOT_FRAMEBUST_GUARD__ = true;
   if (window === window.top) return;
+
+  // 这个 guard 会伪装 window.top / parent / frameElement，能拦住社媒类站点
+  // 主动跳出 iframe，但对 Grok 这类重型 SPA 可能会破坏启动环境。
+  // 只在已知会 frame-bust 的站点启用，不要全站注入。
+  const host = window.location.hostname.replace(/^www\./, "").toLowerCase();
+  const framebustingHosts = new Set([
+    "x.com",
+    "twitter.com",
+    "youtube.com",
+    "reddit.com",
+    "tiktok.com",
+  ]);
+  if (!framebustingHosts.has(host)) return;
 
   // 1) 拦截 top.location.href = ... / top.location = ... / top.location.replace(...)
   try {
@@ -29,6 +54,7 @@ import { matchShortcut, normalizeShortcut } from "../shared/shortcut.js";
 })();
 
 (function initQshotMainHotkey() {
+  if (__QSHOT_IS_GROK_SUBFRAME__) return;
   if (window.__QSHOT_MAIN_HOTKEY_INSTALLED__) {
     return;
   }

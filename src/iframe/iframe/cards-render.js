@@ -1,5 +1,5 @@
 import { state, elements } from "./state.js";
-import { getSelectedSites, isWideMediaSite, buildSiteUrl, escapeHtml, ensureCardsNotEmpty } from "./utils.js";
+import { getSelectedSites, isWideMediaSite, isSocialMediaCardSite, buildSiteUrl, escapeHtml, ensureCardsNotEmpty } from "./utils.js";
 import { setSiteStatus, setGlobalStatus } from "./status.js";
 import {
   clearIframeTimers,
@@ -40,6 +40,9 @@ export function renderCards() {
     const card = createSiteCard(site);
     if (isWideMediaSite(site.id)) {
       card.classList.add("iframe-card-wide-media");
+    }
+    if (isSocialMediaCardSite(site.id)) {
+      card.classList.add("iframe-card-social-media");
     }
     elements.iframesContainer.appendChild(card);
   });
@@ -241,7 +244,9 @@ export function createIframeBody(ref, options = {}) {
   iframe.className = "ai-iframe";
   iframe.dataset.siteId = ref.site.id;
   iframe.loading = "eager";
-  iframe.allow = "clipboard-read; clipboard-write; microphone; camera; geolocation; autoplay; fullscreen; picture-in-picture; storage-access; web-share";
+  iframe.allow = ref.site.id === "grok"
+    ? "clipboard-read; clipboard-write; autoplay; fullscreen; picture-in-picture"
+    : "clipboard-read; clipboard-write; microphone; camera; geolocation; autoplay; fullscreen; picture-in-picture; storage-access; web-share";
 
   const loadState = { resolved: false };
   ref._loadState = loadState;

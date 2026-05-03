@@ -42,7 +42,8 @@ src/
 ├── config/                 ← 运行时配置（JSON 资源 + 常量）
 │   ├── baseConfig.js           content_script，注入基础常量到 window
 │   ├── initialState.json       首次安装时写入 storage 的默认数据
-│   ├── rules.json              declarativeNetRequest 规则（去 X-Frame 等）
+│   ├── rules-source.mjs        declarativeNetRequest 规则的"源数据"
+│   │                           （站点列表 + 模板，构建时展开成 dist/config/rules.json）
 │   └── siteHandlers.json       AI 站点适配表（search handler / 匹配模式）
 │                               通过 web_accessible_resources 暴露
 │
@@ -135,12 +136,13 @@ src/
 
 ### `dist/` 的来源
 
-`build.mjs` 做两件事：
+`build.mjs` 做三件事：
 
 1. **esbuild**：把 `ENTRIES` 列出的 JS 入口（上面提到的那些 `*.js`）分别打包成 IIFE，输出到 `dist/` 相同位置
 2. **资源复制**：把 `SRC_ASSETS`（html / css / 图片 / json / manifest / icons）从 `src/` 原样复制到 `dist/`，外加从仓库根拷 `LICENSE` 和 `PRIVACY.md`
+3. **生成 `dist/config/rules.json`**：把 `src/config/rules-source.mjs` 里的站点列表 + 模板展开成 Chrome MV3 规则数组写入 dist。`src/config/` 下没有 `rules.json` 实体文件，要改 DNR 规则去 `rules-source.mjs` 改完跑构建即可。
 
-`dist/` 的目录结构和 `src/` **几乎一样**，差别只在：JS 是打包后的单文件（没有子目录里的模块源码），额外多了 `LICENSE` 和 `PRIVACY.md`。
+`dist/` 的目录结构和 `src/` **几乎一样**，差别只在：JS 是打包后的单文件（没有子目录里的模块源码），`config/rules.json` 是构建生成的，额外多了 `LICENSE` 和 `PRIVACY.md`。
 
 ## 开发启动
 
@@ -198,7 +200,7 @@ zip 根目录必须直接看到 `manifest.json`（不是 `dist/manifest.json`）
 
 ## 代码约束
 
-1. **单文件 ≤ 500 行**。超过就继续拆模块。现有的 `src/*/*/` 子目录（比如 `src/iframe/inject/`、`src/settings/settings/sections/`）就是拆分结果。
+1. **单文件 ≤ 500 行**。超过就继续拆模块。现有的 `src/*/*/` 子目录（比如 `src/iframe/inject/`、`src/settings/settings/sections/`）就是拆分结果。约束适用于源代码（JS/CSS/HTML/MD/JSON 配置）；像 `src/config/siteHandlers.json` 这种"每条记录都是站点适配数据"的纯数据资源，结构本身就是数据库式表结构，不强制拆分；如果是"重复模板膨胀"导致超行（参考 DNR 规则原 `rules.json` 1800+ 行），改用模板生成（见 `src/config/rules-source.mjs` + `build.mjs` 的 `generateRules`）。
 2. **新增 JS 入口**（例如加一个新 popup 或新 content script）：
    - 在 `src/` 下放源码
    - 在 `build.mjs` 的 `ENTRIES` 数组加一行

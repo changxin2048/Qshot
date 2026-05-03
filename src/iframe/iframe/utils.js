@@ -107,6 +107,10 @@ export function isWideMediaSite(siteId) {
   return siteId === "xiaohongshu" || siteId === "bilibili";
 }
 
+export function isSocialMediaCardSite(siteId) {
+  return siteId === "xiaohongshu" || siteId === "bilibili" || siteId === "zhihu";
+}
+
 export function getQuery() {
   return elements.queryInput.value.trim();
 }
