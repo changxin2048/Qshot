@@ -33,6 +33,7 @@ export const state = {
   columnCount: "1",
   maximizedSiteId: null,
   shouldAutoSend: false,
+  restoreHistoryEntryId: null,
   pendingDispatches: new Map(),
   cardSizeLevel: "medium",
   layoutRows: 1,

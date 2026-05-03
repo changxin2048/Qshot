@@ -72,12 +72,7 @@ export async function handleSendSelected(options = {}) {
     }
 
     const historyEntryPromise = saveSearchHistory(query, selectedSites).catch(() => null);
-    const dispatchStaggerMs = Number.isFinite(BASE_CONFIG.sendDispatchStaggerMs)
-      ? BASE_CONFIG.sendDispatchStaggerMs
-      : 0;
-    const results = await Promise.all(
-      selectedSites.map((site, index) => sendSmartToSite(site, query, index * dispatchStaggerMs))
-    );
+    const results = await sendSitesWithConcurrency(selectedSites, query);
     const successCount = results.filter((item) => item && item.ok).length;
     const failedCount = results.length - successCount;
     diagnosticLog("compare.send", "complete", { successCount, failedCount, results });
@@ -91,6 +86,53 @@ export async function handleSendSelected(options = {}) {
     diagnosticLog("compare.send", "unlock");
     toggleGlobalButtons(false);
   }
+}
+
+async function sendSitesWithConcurrency(sites, query) {
+  const results = new Array(sites.length);
+  const configuredConcurrency = Number.isFinite(BASE_CONFIG.sendConcurrency)
+    ? BASE_CONFIG.sendConcurrency
+    : 2;
+  const concurrency = Math.max(1, Math.min(sites.length, configuredConcurrency));
+  let nextIndex = 0;
+
+  async function worker(workerId) {
+    while (nextIndex < sites.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+
+      const site = sites[index];
+      diagnosticLog("compare.send", "pooled-dispatch", {
+        siteId: site.id,
+        index: index + 1,
+        total: sites.length,
+        workerId,
+        concurrency,
+      });
+      setSiteStatus(site.id, `正在发送（${index + 1}/${sites.length}）...`);
+
+      try {
+        results[index] = await sendSmartToSite(site, query, 0);
+      } catch (error) {
+        diagnosticLog("compare.send", "pooled-dispatch-error", {
+          siteId: site.id,
+          workerId,
+          error: error.message,
+        });
+        results[index] = {
+          ok: false,
+          siteId: site.id,
+          error: error.message || "发送失败"
+        };
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: concurrency }, (_item, index) => worker(index + 1))
+  );
+
+  return results;
 }
 
 function capturePreviousSessionSnapshot(query, time, sessionVersion) {
@@ -132,6 +174,11 @@ export async function maybeAutoSendFromUrl() {
 }
 
 export async function sendSmartToSite(site, query, dispatchDelayMs = 0) {
+  if (site.supportIframe === false) {
+    diagnosticLog("compare.site", "external-tab-route", { site });
+    return openExternalSiteForQuery(site, query);
+  }
+
   const ref = state.cardRefs.get(site.id);
   if (!ref || !ref.iframeEl) {
     diagnosticLog("compare.site", "missing-iframe", { site });
@@ -162,6 +209,37 @@ export async function sendSmartToSite(site, query, dispatchDelayMs = 0) {
   ref.pendingQueryResolver = null;
   diagnosticLog("compare.site", "dispatch-route", { site });
   return dispatchSearchWithRetries(ref, query, dispatchDelayMs);
+}
+
+async function openExternalSiteForQuery(site, query) {
+  const targetUrl = buildSiteUrl(site, query);
+  if (!targetUrl) {
+    return {
+      ok: false,
+      siteId: site.id,
+      error: "站点 URL 配置无效"
+    };
+  }
+
+  const response = await chrome.runtime.sendMessage({
+    type: "OPEN_SITE_TAB_AND_SEND",
+    site,
+    query
+  });
+
+  if (!response?.ok) {
+    return {
+      ok: false,
+      siteId: site.id,
+      error: response?.error || "新标签页打开失败"
+    };
+  }
+
+  return {
+    ok: true,
+    siteId: site.id,
+    message: "已在新标签页打开"
+  };
 }
 
 export function navigateByUrlTemplate(ref, query) {

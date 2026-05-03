@@ -1,8 +1,9 @@
 import esbuild from "esbuild";
-import { cp, rm, mkdir, readdir, stat } from "node:fs/promises";
+import { cp, rm, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildDeclarativeNetRequestRules } from "./src/config/rules-source.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
@@ -33,7 +34,6 @@ const SRC_ASSETS = [
   "config/initialState.json",
   "config/initialState.zh-CN.json",
   "config/initialState.en.json",
-  "config/rules.json",
   "config/siteHandlers.json",
   "config/random-questions",
   "popup/popup.html",
@@ -68,6 +68,16 @@ async function copyAssets() {
   for (const rel of ROOT_ASSETS) {
     await copyOne(path.join(ROOT, rel), path.join(DIST, rel));
   }
+  await generateRules();
+}
+
+// 把 src/config/rules-source.mjs 展开成 Chrome MV3 接受的 JSON 数组
+// 写到 dist/config/rules.json。每次 watch 重建也会重写一次，保证与源一致。
+async function generateRules() {
+  const target = path.join(DIST, "config", "rules.json");
+  await mkdir(path.dirname(target), { recursive: true });
+  const rules = buildDeclarativeNetRequestRules();
+  await writeFile(target, JSON.stringify(rules, null, 2) + "\n", "utf8");
 }
 
 function makeBuildOptions() {

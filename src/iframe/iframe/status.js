@@ -43,6 +43,11 @@ export function handleFrameMessage(event) {
     error: payload.error,
   });
 
+  if (payload.currentUrl) {
+    ref.currentUrl = payload.currentUrl;
+    updateLatestHistoryUrl(payload.siteId, payload.currentUrl);
+  }
+
   if (payload.requestId) {
     resolvePendingDispatch(payload.requestId, payload);
   }

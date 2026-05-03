@@ -4,6 +4,14 @@
 export async function initEmbedSidebarFix(resolveSite) {
   if (window.parent === window) return;
 
+  // DeepSeek 在窄 iframe 首屏会先按移动端布局展开会话抽屉。
+  // 站点配置解析是异步的，等 resolveSite 后再注入会看到侧栏闪一下；
+  // 这里按 hostname 先行安装，尽量赶在首屏绘制前压住抽屉。
+  if (/(\.|^)deepseek\.com$/i.test(window.location.hostname)) {
+    installEarlyDeepSeekSidebarCss();
+    startDeepSeekSidebarSuppressor();
+  }
+
   let site;
   try {
     site = await resolveSite(null);
@@ -24,6 +32,9 @@ export async function initEmbedSidebarFix(resolveSite) {
     "[class*='layout'], [class*='container'], [class*='wrapper'] { margin-left: 0 !important; padding-left: 0 !important; }",
   ];
 
+  // Some sites expose important controls behind their own sidebar drawer.
+  // Keep Doubao and Gemini out of this map so their in-card sidebar buttons
+  // can still open the native drawer/window when clicked.
   const SITE_STYLE_MAP = {
     chatgpt: [
       "/* AI批量搜索：隐藏 ChatGPT 侧边栏，消除左侧留白 */",
@@ -38,15 +49,10 @@ export async function initEmbedSidebarFix(resolveSite) {
     ],
     deepseek: [
       "/* AI批量搜索：隐藏 DeepSeek 侧边栏，消除左侧留白 */",
-      "[class*='sidebar']:not([class*='sidebar-content']):not([class*='sidebar-body']) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; }",
-      "[class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='chat-list'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; }",
-      "div:has(nav):not(:has(main)):not(:has([role='main'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; }",
-      "[class*='chat-main'], [class*='main-content'], [class*='conversation'] { flex: 1 !important; width: 100% !important; min-width: 0 !important; padding-left: 0 !important; margin-left: 0 !important; }",
-    ],
-    doubao: [
-      "/* AI批量搜索：隐藏豆包侧边栏 / 会话列表 */",
-      ...DOMESTIC_CHAT_CSS,
-      "[class*='semi-layout-sider'], [class*='conversation-sidebar'], [class*='chat-history'], [class*='left-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+      "[class*='sidebar'], [class*='side-bar'], [class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
+      "aside, nav, [role='navigation'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
+      "div:has(> aside), div:has(> nav), div:has([class*='sidebar']):not(:has(textarea)):not(:has([contenteditable='true'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+      "main, [role='main'], [class*='chat-main'], [class*='main-content'], [class*='conversation'] { flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding-left: 0 !important; margin-left: 0 !important; transform: none !important; }",
     ],
     qwen: [
       "/* AI批量搜索：隐藏通义千问 / Qwen 侧边栏 */",
@@ -62,12 +68,6 @@ export async function initEmbedSidebarFix(resolveSite) {
       "/* AI批量搜索：隐藏 Kimi 侧边栏 / 会话列表 */",
       ...DOMESTIC_CHAT_CSS,
       "[class*='conversation-sidebar'], [class*='chat-history'], [class*='left-sidebar'], [class*='nav-sidebar'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
-    ],
-    gemini: [
-      "/* AI批量搜索：隐藏 Gemini 侧边栏 */",
-      ...COMMON_SIDEBAR_CSS,
-      "bard-sidenav, mat-sidenav, .mat-drawer-side, .mat-sidenav { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; visibility: hidden !important; }",
-      ".mat-drawer-content, mat-sidenav-content { margin-left: 0 !important; width: 100% !important; }",
     ],
     claude: [
       "/* AI批量搜索：隐藏 Claude 侧边栏 */",
@@ -101,16 +101,157 @@ export async function initEmbedSidebarFix(resolveSite) {
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  function startSiteSuppressors() {
+    if (site.id === "deepseek") {
+      startDeepSeekSidebarSuppressor();
+    }
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       injectStyle();
       startObserver();
+      startSiteSuppressors();
     });
   } else {
     injectStyle();
     startObserver();
+    startSiteSuppressors();
   }
   setTimeout(injectStyle, 400);
   setTimeout(injectStyle, 1500);
   setTimeout(injectStyle, 4000);
+}
+
+function installEarlyDeepSeekSidebarCss() {
+  const STYLE_ID = "ai-compare-deepseek-early-sidebar-fix";
+  if (document.getElementById(STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = [
+    "/* Qshot: prevent DeepSeek mobile drawer from flashing in iframe */",
+    "aside, nav, [role='navigation'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
+    "[class*='sidebar'], [class*='side-bar'], [class*='sider'], [class*='drawer'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
+    "[class*='mask'], [class*='overlay'], [class*='backdrop'] { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }",
+    "main, [role='main'], [class*='chat-main'], [class*='main-content'] { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding-left: 0 !important; transform: none !important; }",
+  ].join("\n");
+
+  (document.head || document.documentElement).appendChild(style);
+}
+
+function startDeepSeekSidebarSuppressor() {
+  if (window.__QSHOT_DEEPSEEK_SIDEBAR_SUPPRESSOR__) return;
+  window.__QSHOT_DEEPSEEK_SIDEBAR_SUPPRESSOR__ = true;
+
+  let scheduled = false;
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      suppressDeepSeekSidebar();
+    });
+  };
+
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style", "aria-hidden"],
+    childList: true,
+    subtree: true,
+  });
+
+  [0, 50, 120, 250, 500, 1000, 2000, 4000].forEach((delayMs) => {
+    setTimeout(schedule, delayMs);
+  });
+}
+
+function suppressDeepSeekSidebar() {
+  const body = document.body;
+  if (!body) return;
+
+  const selector = [
+    "aside",
+    "nav",
+    "[role='navigation']",
+    "[class*='sidebar']",
+    "[class*='side-bar']",
+    "[class*='sider']",
+    "[class*='drawer']",
+    "[class*='mask']",
+    "[class*='modal']",
+    "[class*='overlay']",
+    "[class*='history']",
+    "[class*='conversation']",
+    "[class*='chat-list']",
+  ].join(",");
+
+  document.querySelectorAll(selector).forEach((element) => {
+    if (isDeepSeekSidebarLike(element) || isDeepSeekBackdropLike(element)) {
+      forceHideElement(element);
+    }
+  });
+
+  Array.from(body.children).forEach((element) => {
+    if (isDeepSeekSidebarLike(element) || isDeepSeekBackdropLike(element)) {
+      forceHideElement(element);
+    }
+  });
+}
+
+function isDeepSeekSidebarLike(element) {
+  if (!(element instanceof HTMLElement) || element.dataset.qshotKeep === "true") {
+    return false;
+  }
+  if (element.querySelector("textarea, [contenteditable='true']")) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const className = typeof element.className === "string" ? element.className : "";
+  const text = String(element.innerText || element.textContent || "").slice(0, 600);
+  const looksLikeDeepSeekMenu =
+    /deepseek|新对话|开启新对话|今天|昨天|历史|会话|chat/i.test(text) ||
+    /sidebar|side-bar|sider|drawer|history|conversation|chat-list/i.test(className);
+
+  return looksLikeDeepSeekMenu &&
+    rect.left <= Math.max(24, viewportWidth * 0.08) &&
+    rect.top <= 96 &&
+    rect.width >= 180 &&
+    rect.width <= Math.max(420, viewportWidth * 0.72) &&
+    rect.height >= Math.max(360, viewportHeight * 0.65);
+}
+
+function isDeepSeekBackdropLike(element) {
+  if (!(element instanceof HTMLElement) || element.querySelector("textarea, [contenteditable='true']")) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  if (rect.width < viewportWidth * 0.45 || rect.height < viewportHeight * 0.65) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  const background = style.backgroundColor || "";
+  const hasDimBackground = /rgba?\([^)]*,\s*(0\.[2-9]|[1-9])\)/.test(background);
+  const isOverlayPosition = style.position === "fixed" || style.position === "absolute" || style.position === "sticky";
+  return isOverlayPosition && hasDimBackground;
+}
+
+function forceHideElement(element) {
+  element.dataset.qshotDeepseekHidden = "true";
+  element.style.setProperty("display", "none", "important");
+  element.style.setProperty("visibility", "hidden", "important");
+  element.style.setProperty("opacity", "0", "important");
+  element.style.setProperty("pointer-events", "none", "important");
+  element.style.setProperty("width", "0", "important");
+  element.style.setProperty("min-width", "0", "important");
+  element.style.setProperty("max-width", "0", "important");
+  element.style.setProperty("transform", "translateX(-120%)", "important");
 }

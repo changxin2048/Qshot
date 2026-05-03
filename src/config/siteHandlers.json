@@ -13,6 +13,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载 ChatGPT，若目标站点仍拦截嵌入则显示受限提示。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1600,
+        "submitVerifyRetries": 4,
         "steps": [
           {
             "action": "focus",
@@ -51,8 +53,8 @@
               "button[aria-label*='发送']",
               "button[type='submit']"
             ],
-            "submitWaitMs": 3000,
-            "postClickVerifyMs": 1000,
+            "submitWaitMs": 6000,
+            "postClickVerifyMs": 1400,
             "description": "轮询发送按钮由 aria-disabled 切换为可用后立即点击（ChatGPT 冷启动水合较慢，等长一点）"
           },
           {
@@ -147,6 +149,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载 Kimi，优先匹配 textarea 和 contenteditable 输入区。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1600,
+        "submitVerifyRetries": 4,
         "steps": [
           {
             "action": "focus",
@@ -185,8 +189,8 @@
               "[role='button'][aria-label*='Send']",
               "div[role='button'][tabindex='0']"
             ],
-            "submitWaitMs": 2500,
-            "postClickVerifyMs": 1000
+            "submitWaitMs": 6000,
+            "postClickVerifyMs": 1400
           },
           {
             "action": "sendKeys",
@@ -315,6 +319,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载豆包，先走通用输入框选择器。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1800,
+        "submitVerifyRetries": 1,
         "steps": [
           {
             "action": "focus",
@@ -342,11 +348,18 @@
               "button[aria-label*='发送']",
               "button[aria-label*='Send']",
               "button[data-testid*='send']",
+              "button[class*='send']",
+              "[class*='send-btn']",
+              "[class*='send_button']",
+              "[class*='send-button']",
+              "[class*='btn-send']",
               "[role='button'][aria-label*='发送']",
               "[role='button'][aria-label*='Send']",
               "div[role='button'][tabindex='0']"
             ],
-            "submitWaitMs": 1500
+            "submitWaitMs": 2500,
+            "postClickVerifyMs": 1800,
+            "enterFallbackAfterClick": false
           },
           {
             "action": "sendKeys",
@@ -374,6 +387,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载 Gemini，使用通用输入与发送选择器。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1600,
+        "submitVerifyRetries": 4,
         "steps": [
           {
             "action": "focus",
@@ -414,8 +429,8 @@
               "[role='button'][aria-label*='Send']",
               "[role='button'][aria-label*='发送']"
             ],
-            "submitWaitMs": 2500,
-            "postClickVerifyMs": 1000
+            "submitWaitMs": 6000,
+            "postClickVerifyMs": 1400
           },
           {
             "action": "sendKeys",
@@ -444,6 +459,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载 Claude，使用通用输入与发送策略。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1600,
+        "submitVerifyRetries": 4,
         "steps": [
           {
             "action": "focus",
@@ -493,8 +510,8 @@
               "[role='button'][aria-label*='Submit']",
               "[role='button'][aria-label*='发送']"
             ],
-            "submitWaitMs": 3000,
-            "postClickVerifyMs": 1000
+            "submitWaitMs": 6000,
+            "postClickVerifyMs": 1400
           },
           {
             "action": "sendKeys",
@@ -522,6 +539,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载腾讯元宝，使用通用输入与发送逻辑。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1600,
+        "submitVerifyRetries": 4,
         "steps": [
           {
             "action": "focus",
@@ -585,8 +604,8 @@
               "[role='button'][aria-label*='发送']",
               "[role='button'][aria-label*='Send']"
             ],
-            "submitWaitMs": 2500,
-            "postClickVerifyMs": 900
+            "submitWaitMs": 6000,
+            "postClickVerifyMs": 1400
           },
           {
             "action": "sendKeys",
@@ -1242,7 +1261,7 @@
       "matchPatterns": [
         "grok.com"
       ],
-      "notes": "优先在页面内 iframe 卡片中加载 Grok，使用 contenteditable 输入框并尝试通用发送。",
+      "notes": "优先在页面内 iframe 卡片中加载 Grok，并为 grok.com 单独放宽嵌入规则。",
       "searchHandler": {
         "steps": [
           {

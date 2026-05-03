@@ -165,8 +165,10 @@ export function createSiteCard(site) {
   hoverActions.appendChild(refreshBtn);
   hoverActions.appendChild(closeBtn);
 
+  const initialUrl = site.restoreUrl || site.url;
   const ref = {
     site,
+    restoreUrl: site.restoreUrl || "",
     cardEl: card,
     statusEl: status,
     bodyEl: body,
@@ -181,7 +183,7 @@ export function createSiteCard(site) {
     pendingQueryDelayMs: 0,
     pendingQueryResolver: null,
     pendingFilesOnLoad: [],
-    currentUrl: site.url,
+    currentUrl: initialUrl,
     // 本张卡片当前 iframe 相关的两个定时器：
     //   loadDelayTimerId：错峰加载排队中，到点给 iframe 赋 src
     //   fallbackTimerId：超过 embedTimeoutMs 仍未加载成功时切换到 fallback 页
@@ -230,15 +232,20 @@ export function createIframeBody(ref, options = {}) {
     // 避免在同一 tick 里先释放再占用造成短暂的"空转补位"。
   }
 
+  if (ref.site.supportIframe === false) {
+    renderExternalFallback(ref);
+    return;
+  }
+
   const iframe = document.createElement("iframe");
   iframe.className = "ai-iframe";
   iframe.dataset.siteId = ref.site.id;
   iframe.loading = "eager";
-  iframe.allow = "clipboard-read; clipboard-write; autoplay; fullscreen; picture-in-picture";
+  iframe.allow = "clipboard-read; clipboard-write; microphone; camera; geolocation; autoplay; fullscreen; picture-in-picture; storage-access; web-share";
 
   const loadState = { resolved: false };
   ref._loadState = loadState;
-  ref._targetSrc = buildSiteUrl(ref.site, "");
+  ref._targetSrc = ref.restoreUrl || buildSiteUrl(ref.site, "");
 
   const loading = createLoadingOverlay(ref.site.name, immediate ? "正在加载…" : "等待加载中…");
 
@@ -340,6 +347,35 @@ export function renderFallback(ref, message) {
     ref.cardEl.appendChild(ref.hoverActionEl);
   }
   setSiteStatus(ref.site.id, "该站点暂时无法在卡片内嵌入。");
+}
+
+function renderExternalFallback(ref) {
+  ref.loadingEl = null;
+  ref.iframeEl = null;
+  ref.loaded = false;
+  ref.currentUrl = ref.restoreUrl || buildSiteUrl(ref.site, "");
+  ref.bodyEl.innerHTML = `
+    <div class="fallback-panel">
+      <div class="warning-box">
+        <strong>${escapeHtml(ref.site.name)} 已改为新标签页模式</strong>
+      </div>
+      <p>${escapeHtml(ref.site.notes || "该站点当前不适合在卡片内嵌入。")}</p>
+      <div class="inline-action-row">
+        <button class="site-action-btn" type="button" data-open-site="${escapeHtml(ref.currentUrl)}">在新标签页打开</button>
+      </div>
+    </div>
+  `;
+
+  const openButton = ref.bodyEl.querySelector("[data-open-site]");
+  if (openButton) {
+    openButton.addEventListener("click", () => {
+      window.open(ref.currentUrl || ref.site.url, "_blank", "noopener,noreferrer");
+    });
+  }
+  if (ref.hoverActionEl && !ref.cardEl.contains(ref.hoverActionEl)) {
+    ref.cardEl.appendChild(ref.hoverActionEl);
+  }
+  setSiteStatus(ref.site.id, "该站点已改为新标签页模式。");
 }
 
 function createLoadingOverlay(siteName, message) {

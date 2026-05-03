@@ -95,34 +95,50 @@ export function renderHistoryList() {
   }
 
   state.searchHistory.forEach((entry) => {
-    const normalizedSites = Array.isArray(entry.sites)
-      ? entry.sites.map((site, index) => {
-          if (typeof site === "string") {
-            return {
-              id: `legacy-${index}`,
-              name: site,
-              url: ""
-            };
-          }
-
-          return {
-            id: String(site.id || `site-${index}`),
-            name: String(site.name || "未命名站点"),
-            url: String(site.url || "")
-          };
-        })
-      : [];
+    const normalizedSites = normalizeHistorySites(entry.sites);
 
     const item = document.createElement("div");
     item.className = "history-item";
 
-    const title = document.createElement("div");
-    title.className = "history-item-title";
-    title.textContent = entry.query;
+    const actions = document.createElement("div");
+    actions.className = "history-item-actions";
 
     const meta = document.createElement("div");
     meta.className = "history-item-meta";
     meta.textContent = formatHistoryTime(entry.createdAt);
+    actions.appendChild(meta);
+
+    const actionButtons = document.createElement("div");
+    actionButtons.className = "history-action-buttons";
+
+    const restoreBtn = document.createElement("button");
+    restoreBtn.type = "button";
+    restoreBtn.className = "history-restore-btn";
+    restoreBtn.textContent = "复原";
+    restoreBtn.setAttribute("aria-label", "新开页面复原这次搜索会话");
+    restoreBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openHistoryEntryRestorePage(entry.id);
+    });
+    actionButtons.appendChild(restoreBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "history-item-delete-btn";
+    deleteBtn.textContent = "删除";
+    deleteBtn.setAttribute("aria-label", "删除记录");
+    deleteBtn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await deleteHistoryEntry(entry.id);
+    });
+    actionButtons.appendChild(deleteBtn);
+    actions.appendChild(actionButtons);
+
+    const title = document.createElement("div");
+    title.className = "history-item-title";
+    title.textContent = entry.query;
 
     const links = document.createElement("div");
     links.className = "history-site-links";
@@ -147,27 +163,140 @@ export function renderHistoryList() {
       links.appendChild(link);
     });
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "history-item-delete-btn";
-    deleteBtn.textContent = "×";
-    deleteBtn.setAttribute("aria-label", "删除记录");
-    deleteBtn.setAttribute("data-tooltip", "删除该记录");
-    deleteBtn.addEventListener("click", async (event) => {
-      event.stopPropagation();
-      await deleteHistoryEntry(entry.id);
-    });
-
+    item.appendChild(actions);
     item.appendChild(title);
-    item.appendChild(meta);
     item.appendChild(links);
-    item.appendChild(deleteBtn);
     item.addEventListener("click", () => {
       setQueryInputValue(entry.query, { focus: true });
       closeHistoryPanel();
     });
     elements.historyList.appendChild(item);
   });
+}
+
+function openHistoryEntryRestorePage(entryId) {
+  if (!entryId) {
+    return;
+  }
+
+  const url = new URL(chrome.runtime.getURL("iframe/iframe.html"));
+  url.searchParams.set("restoreHistoryId", entryId);
+  window.open(url.toString(), "_blank", "noopener,noreferrer");
+  closeHistoryPanel();
+}
+
+export function applyHistoryRestoreFromUrl() {
+  const entryId = state.restoreHistoryEntryId;
+  if (!entryId) {
+    return null;
+  }
+
+  const entry = state.searchHistory.find((item) => item?.id === entryId);
+  if (!entry) {
+    clearRestoreHistoryParamFromUrl();
+    return null;
+  }
+
+  const normalizedSites = normalizeHistorySites(entry.sites);
+  const siteById = new Map((state.allSites || []).map((site) => [site.id, site]));
+  const restoredSites = normalizedSites
+    .map((historySite) => buildRestoredSite(historySite, siteById))
+    .filter(Boolean);
+
+  if (restoredSites.length === 0) {
+    setQueryInputValue("", { focus: false });
+    clearRestoreHistoryParamFromUrl();
+    return entry;
+  }
+
+  state.sites = restoredSites;
+  state.hiddenSiteIds.clear();
+  state.maximizedSiteId = null;
+  state.activeSidebarSiteId = restoredSites[0]?.id || null;
+  state.currentHistoryEntryId = entry.id || null;
+  state.historyEntryIdBySiteId.clear();
+  restoredSites.forEach((site) => {
+    if (site?.id && entry?.id) {
+      state.historyEntryIdBySiteId.set(site.id, entry.id);
+    }
+  });
+
+  setQueryInputValue("", { focus: false });
+  clearRestoreHistoryParamFromUrl();
+  return entry;
+}
+
+function buildRestoredSite(historySite, siteById) {
+  const id = String(historySite?.id || "").trim();
+  const name = String(historySite?.name || "").trim() || "未命名站点";
+  const url = normalizeRestoredUrl(historySite?.url);
+  const baseSite = siteById.get(id);
+
+  if (baseSite) {
+    return {
+      ...baseSite,
+      restoreUrl: url || baseSite.url
+    };
+  }
+
+  if (!id || !url) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    url,
+    restoreUrl: url,
+    enabled: true,
+    supportIframe: true,
+    supportUrlQuery: false,
+    matchPatterns: [],
+    isCustom: true
+  };
+}
+
+function normalizeRestoredUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.toString() : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function normalizeHistorySites(sites) {
+  return Array.isArray(sites)
+    ? sites.map((site, index) => {
+        if (typeof site === "string") {
+          return {
+            id: `legacy-${index}`,
+            name: site,
+            url: ""
+          };
+        }
+
+        return {
+          id: String(site.id || `site-${index}`),
+          name: String(site.name || "未命名站点"),
+          url: String(site.url || "")
+        };
+      })
+    : [];
+}
+
+function clearRestoreHistoryParamFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("restoreHistoryId")) {
+      url.searchParams.delete("restoreHistoryId");
+      history.replaceState({}, "", url.toString());
+    }
+  } catch (_error) {
+    /* ignore */
+  }
 }
 
 export async function deleteHistoryEntry(id) {

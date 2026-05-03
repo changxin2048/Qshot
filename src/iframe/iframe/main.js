@@ -24,6 +24,7 @@ import {
   clearAllHistory,
   toggleHistoryPanel,
   closeHistoryPanel,
+  applyHistoryRestoreFromUrl,
 } from "./history.js";
 import {
   bindPromptPickerEvents,
@@ -57,8 +58,11 @@ async function start() {
     await restorePreferences();
     bindPromptPickerEvents();
     await loadSites();
+    const restoredEntry = applyHistoryRestoreFromUrl();
     renderCards();
-    setGlobalStatus(`已加载 ${getSelectedSites().length} 个站点。`);
+    setGlobalStatus(restoredEntry
+      ? `已复原 "${restoredEntry.query || "历史记录"}" 的 ${getSelectedSites().length} 张卡片。`
+      : `已加载 ${getSelectedSites().length} 个站点。`);
     await maybeAutoSendFromUrl();
   } catch (error) {
     setGlobalStatus(`初始化失败：${error.message}`, true);
@@ -292,6 +296,7 @@ function bindEvents() {
     // 新建对话会让所有卡片一起重新加载，这里显式走并发队列（immediate=false），
     // 避免 N 张卡片同时冷启动打满 CPU。单张"刷新"按钮仍走立即路径（immediate=true）。
     state.cardRefs.forEach((ref) => {
+      ref.restoreUrl = "";
       refreshSiteCard(ref, { immediate: false });
     });
 
@@ -334,6 +339,17 @@ function bindEvents() {
     closeAddSitePicker();
   });
 
+  document.addEventListener("pointerdown", (event) => {
+    if (!state.isAddSitePickerOpen || !elements.addSitePopover) {
+      return;
+    }
+    const insidePopover = elements.addSitePopover.contains(event.target);
+    const insideBtn = elements.addSiteBtn?.contains(event.target);
+    if (!insidePopover && !insideBtn) {
+      closeAddSitePicker();
+    }
+  }, true);
+
   document.addEventListener("click", (event) => {
     if (!state.isAddSitePickerOpen || !elements.addSitePopover) {
       return;
@@ -354,12 +370,24 @@ function bindEvents() {
       closeAddSitePicker();
     }
   });
+
+  window.addEventListener("blur", () => {
+    if (!state.isAddSitePickerOpen) {
+      return;
+    }
+    window.setTimeout(() => {
+      if (document.activeElement instanceof HTMLIFrameElement) {
+        closeAddSitePicker();
+      }
+    }, 0);
+  });
 }
 
 function hydrateQueryFromUrl() {
   const url = new URL(window.location.href);
   const query = url.searchParams.get("q");
   const sitesParam = url.searchParams.get("sites");
+  state.restoreHistoryEntryId = url.searchParams.get("restoreHistoryId");
   state.shouldAutoSend = url.searchParams.get("autosend") === "1";
   state.requestedSiteIds = parseRequestedSiteIds(sitesParam);
   if (query) {

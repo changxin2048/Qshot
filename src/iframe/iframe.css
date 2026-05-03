@@ -77,55 +77,68 @@
 }
 
 .history-item-delete-btn{
-  top: 8px;
-  right: 8px;
-  width: 14px;
-  height: 14px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: #b3b3b3;
-  font-size: 14px;
+  position: static;
+  height: 26px;
+  width: auto;
+  min-width: 48px;
+  padding: 0 10px;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: #111;
+  font-size: var(--fs-sm);
+  font-weight: 500;
   line-height: 1;
   box-shadow: none;
-  opacity: 0;
-  transition: opacity .15s ease, color .15s ease;
-}
-
-.history-item:hover .history-item-delete-btn,
-.history-item:focus-within .history-item-delete-btn{
   opacity: 1;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
 .history-item-delete-btn:hover{
-  color: #ef4444;
+  background: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #dc2626;
 }
 
-.history-item-delete-btn[data-tooltip]{
-  position: absolute;
+.history-item-actions{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
 }
 
-.history-item-delete-btn[data-tooltip]::after{
-  content: attr(data-tooltip);
-  position: absolute;
-  top: -30px;
-  right: 0;
-  padding: 4px 8px;
-  border-radius: var(--r-sm);
-  background: rgba(17, 17, 17, 0.92);
+.history-item-actions .history-item-meta{
+  margin: 0;
+  min-width: 0;
+}
+
+.history-action-buttons{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: none;
+}
+
+.history-restore-btn{
+  height: 26px;
+  min-width: 48px;
+  padding: 0 10px;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: #111;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.history-restore-btn:hover{
+  background: #111;
+  border-color: #111;
   color: #fff;
-  font-size: 12px;
-  line-height: 1.2;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .12s ease, visibility .12s ease;
-}
-
-.history-item-delete-btn[data-tooltip]:hover::after{
-  opacity: 1;
-  visibility: visible;
 }
 
 /* ── 统一预览卡片（shared/prompt-item.js 驱动）── */
@@ -339,10 +352,13 @@
   border-radius: 50%;
   background: #fff;
   color: #555;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   font-size: 14px;
   font-weight: 400;
-  line-height: 22px;
+  line-height: 1;
   text-align: center;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);

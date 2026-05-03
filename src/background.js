@@ -102,6 +102,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "OPEN_SITE_TAB_AND_SEND") {
+    openSiteTabAndSend(message.site, message.query)
+      .then((result) => sendResponse({ ok: true, ...result }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "WARMUP_AI_SITES") {
     warmupAiSites()
       .then((result) => sendResponse({ ok: true, ...result }))
@@ -236,6 +243,24 @@ async function openSitesInTabs(siteIds, query) {
 
   const openedTabIds = tabSitePairs.map(({ tab }) => tab.id);
   return { tabIds: openedTabIds };
+}
+
+async function openSiteTabAndSend(site, query) {
+  if (!site || !site.url) {
+    throw new Error("站点配置无效");
+  }
+
+  const tab = await chrome.tabs.create({
+    url: buildSiteUrl(site, query),
+    active: false
+  });
+
+  if (query) {
+    await waitForTabComplete(tab.id);
+    await sendQueryToTab(tab.id, site, query);
+  }
+
+  return { tabId: tab.id };
 }
 
 async function sendQueryToTab(tabId, site, query) {

@@ -17,6 +17,8 @@ import { setContenteditableValue } from "./editors.js";
 //     单独 step 显式调更大的 submitWaitMs，仍然保留 max() 语义。
 const FILES_MIN_SUBMIT_WAIT_MS = 20000;
 const FILES_MIN_FIND_TIMEOUT_MS = 25000;
+const SUBMIT_VERIFY_WAIT_MS = 900;
+const SUBMIT_VERIFY_RETRY_COUNT = 4;
 
 function applyFilesAwareTimeouts(step) {
   // 不在原 config 上改写：每次只对 SUBMIT_ACTIONS 类的步骤产出一份补丁副本，
@@ -66,6 +68,8 @@ export async function executeSiteHandler(query, handlerConfig, options = {}) {
       await delay(step.waitAfter);
     }
   }
+
+  await verifySubmittedOrRetry(query, handlerConfig, context, { hasFiles });
 }
 
 async function executeStep(step, query, context) {
@@ -87,6 +91,7 @@ async function executeStep(step, query, context) {
       return;
     case "sendKeys":
       await executeSendKeys(step);
+      context.submitted = true;
       return;
     case "smartSubmit":
       if (await executeSmartSubmit(step, query)) context.submitted = true;
@@ -94,6 +99,102 @@ async function executeStep(step, query, context) {
     default:
       throw new Error(`不支持的 action: ${step.action}`);
   }
+}
+
+async function verifySubmittedOrRetry(query, handlerConfig, context, options = {}) {
+  const text = String(query || "").trim();
+  if (!text) {
+    return;
+  }
+
+  const steps = Array.isArray(handlerConfig.steps) ? handlerConfig.steps : [];
+  const submitSteps = steps.filter((step) => SUBMIT_ACTIONS.has(step.action));
+  const inputStep = findSubmitVerificationInputStep(steps);
+  const rewriteStep = steps.find((step) => step.action === "setValue" && getSelectors(step).length > 0);
+  if (submitSteps.length === 0 || !inputStep) {
+    return;
+  }
+
+  const verifyWaitMs = Number.isFinite(handlerConfig.submitVerifyWaitMs)
+    ? handlerConfig.submitVerifyWaitMs
+    : SUBMIT_VERIFY_WAIT_MS;
+  const maxRetries = Number.isFinite(handlerConfig.submitVerifyRetries)
+    ? handlerConfig.submitVerifyRetries
+    : SUBMIT_VERIFY_RETRY_COUNT;
+
+  await delay(verifyWaitMs);
+
+  for (let retryIndex = 0; retryIndex <= maxRetries; retryIndex += 1) {
+    const current = await readCurrentValue(inputStep);
+    if (!current.includes(text)) {
+      return;
+    }
+
+    if (retryIndex >= maxRetries) {
+      throw new Error("内容仍停留在输入框，发送按钮可能未生效");
+    }
+
+    if (rewriteStep) {
+      await executeStep(rewriteStep, query, context);
+      if (rewriteStep.waitAfter) {
+        await delay(rewriteStep.waitAfter);
+      }
+      await delay(120);
+    } else {
+      await refireInputEvents(inputStep, text);
+    }
+
+    context.submitted = false;
+    for (const rawStep of submitSteps) {
+      const step = options.hasFiles ? applyFilesAwareTimeouts(rawStep) : rawStep;
+      try {
+        await executeStep(step, query, context);
+      } catch (error) {
+        if (step.optional) continue;
+        throw error;
+      }
+
+      if (step.waitAfter) {
+        await delay(step.waitAfter);
+      }
+      await delay(Math.min(verifyWaitMs, 450));
+      const afterSubmitValue = await readCurrentValue(inputStep);
+      if (!afterSubmitValue.includes(text)) {
+        return;
+      }
+    }
+
+    await delay(verifyWaitMs);
+  }
+}
+
+async function refireInputEvents(step, text) {
+  try {
+    const element = await findElement(step);
+    safeFocus(element);
+    if (isTextControl(element)) {
+      dispatchEventList(element, ["input", "change"]);
+      return;
+    }
+    element.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: text,
+      })
+    );
+    element.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+  } catch (_error) {
+    // 保底事件失败不应阻断后续提交重试。
+  }
+}
+
+function findSubmitVerificationInputStep(steps) {
+  const inputActions = new Set(["setValue", "smartSubmit", "sendKeys", "focus"]);
+  return steps.find((step) => step.action === "setValue" && getSelectors(step).length > 0)
+    || steps.find((step) => inputActions.has(step.action) && getSelectors(step).length > 0)
+    || null;
 }
 
 async function executeFocus(step) {
@@ -443,16 +544,21 @@ function findBestSubmitButton(anchor, selectors) {
     selectors.forEach((selector) => {
       root.querySelectorAll(selector).forEach((element) => {
         if (seen.has(element) || !isUsableSubmitButton(element)) return;
+        if (looksLikeNonSubmitControl(element)) return;
         seen.add(element);
         candidates.push(element);
       });
     });
   });
 
-  if (candidates.length === 0) return null;
+  if (candidates.length === 0) {
+    return findHeuristicSubmitButton(anchor);
+  }
 
   const anchorRect = anchor.getBoundingClientRect();
-  candidates.sort((left, right) => {
+  const sendLike = candidates.filter(looksLikeSubmitControl);
+  const pool = sendLike.length > 0 ? sendLike : candidates;
+  pool.sort((left, right) => {
     const leftRect = left.getBoundingClientRect();
     const rightRect = right.getBoundingClientRect();
     const leftScore = Math.abs(leftRect.right - anchorRect.right) + Math.abs(leftRect.bottom - anchorRect.bottom);
@@ -460,7 +566,79 @@ function findBestSubmitButton(anchor, selectors) {
     return leftScore - rightScore;
   });
 
-  return candidates[0];
+  return pool[0];
+}
+
+function findHeuristicSubmitButton(anchor) {
+  const root = typeof anchor.closest === "function"
+    ? anchor.closest("form, footer, [role='form'], [class*='input'], [class*='composer'], [class*='footer'], [class*='sender'], [class*='chat']")
+    : null;
+  const searchRoot = root || document;
+  const anchorRect = anchor.getBoundingClientRect();
+  const candidates = [];
+
+  searchRoot
+    .querySelectorAll("button, [role='button'], [tabindex='0']")
+    .forEach((element) => {
+      if (!(element instanceof HTMLElement)) return;
+      if (element === anchor || element.contains(anchor) || !isUsableSubmitButton(element)) return;
+      if (element.querySelector("textarea, input, [contenteditable='true']")) return;
+      if (looksLikeNonSubmitControl(element)) return;
+
+      const rect = element.getBoundingClientRect();
+      const isNearComposer =
+        rect.top >= anchorRect.top - 80 &&
+        rect.bottom <= anchorRect.bottom + 100 &&
+        rect.left >= anchorRect.left - 40;
+      if (!isNearComposer) return;
+
+      candidates.push(element);
+    });
+
+  if (candidates.length === 0) return null;
+
+  const sendLike = candidates.filter(looksLikeSubmitControl);
+  const pool = sendLike.length > 0 ? sendLike : candidates;
+  pool.sort((left, right) => {
+    const leftRect = left.getBoundingClientRect();
+    const rightRect = right.getBoundingClientRect();
+    const leftScore = Math.abs(leftRect.right - anchorRect.right) + Math.abs(leftRect.bottom - anchorRect.bottom);
+    const rightScore = Math.abs(rightRect.right - anchorRect.right) + Math.abs(rightRect.bottom - anchorRect.bottom);
+    return leftScore - rightScore;
+  });
+
+  return pool[0];
+}
+
+function looksLikeSubmitControl(element) {
+  const label = getControlSignature(element);
+  return /发送|提交|send|submit|arrow[-_ ]?up|paper[-_ ]?plane|send-button|btn-send|icon-send/i.test(label);
+}
+
+function looksLikeNonSubmitControl(element) {
+  const label = getControlSignature(element);
+  return /附件|上传|添加|更多|语音|麦克风|停止|取消|模型|工具|attach|upload|add|plus|more|voice|mic|microphone|stop|cancel|model|tool|file|image|photo|camera/i.test(label);
+}
+
+function getControlSignature(element) {
+  const attrs = [
+    element.getAttribute("aria-label"),
+    element.getAttribute("title"),
+    element.getAttribute("data-testid"),
+    element.getAttribute("data-test-id"),
+    element.getAttribute("class"),
+    element.textContent,
+  ];
+  element.querySelectorAll("svg, path, use, mat-icon, i").forEach((child) => {
+    attrs.push(
+      child.getAttribute("aria-label"),
+      child.getAttribute("data-icon"),
+      child.getAttribute("class"),
+      child.getAttribute("d"),
+      child.textContent
+    );
+  });
+  return attrs.filter(Boolean).join(" ");
 }
 
 function isUsableSubmitButton(element) {
