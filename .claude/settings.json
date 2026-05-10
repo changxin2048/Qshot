@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command 'Get-Process | Where-Object { $_.ProcessName -like '\\\\''*work*review*'\\\\'' -or $_.ProcessName -like '\\\\''*Work*'\\\\'' } | Select-Object ProcessName, Path')",
+      "Bash(cargo --version)",
+      "Read(//d/Work Review/**)",
+      "Bash(curl -s --max-time 15 https://raw.githubusercontent.com/wm94i/Work_Review/main/README.md)",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/docs)",
+      "Bash(curl -s --max-time 15 https://raw.githubusercontent.com/wm94i/Work_Review/main/docs/Introduction_zh/%E5%8A%A9%E6%89%8B.md)",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/docs/Introduction_zh)",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/docs/group)",
+      "Bash(curl -s --max-time 3 http://localhost:47831/)",
+      "Bash(curl -s --max-time 3 \"http://localhost:47831/?token=wr-local-ebbdd71868d145fe9a6ec8f7143ccb4d\")",
+      "Bash(curl -s --max-time 3 \"http://localhost:47831/help?token=wr-local-ebbdd71868d145fe9a6ec8f7143ccb4d\")",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/src-tauri/src)",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/)",
+      "Bash(curl -s --max-time 15 https://api.github.com/repos/wm94i/Work_Review/contents/src-tauri)",
+      "Bash(curl -s --max-time 15 https://raw.githubusercontent.com/wm94i/Work_Review/main/src-tauri/Cargo.toml)",
+      "Bash(curl -s --max-time 15 https://raw.githubusercontent.com/wm94i/Work_Review/main/Cargo.toml)"
+    ]
+  }
+}

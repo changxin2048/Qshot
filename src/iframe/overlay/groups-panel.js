@@ -4,6 +4,7 @@ export function renderGroupsIfOpen() {
   if (!state.shadowRoot) return;
   const container = state.shadowRoot.querySelector(".groups");
   if (!container) return;
+  if (state.isGroupPickMode) exitGroupPickMode();
   container.innerHTML = "";
 
   state.groups.forEach((group) => {
@@ -119,11 +120,31 @@ function renderGroupTooltipSites(tooltip, sites) {
   tooltip.appendChild(list);
 }
 
-async function openSiteHome(url) {
+export async function openSiteHome(url) {
   const safeUrl = normalizeSiteHomeUrl(url);
   if (!safeUrl) return;
   try {
     await chrome.runtime.sendMessage({ type: "OPEN_EXTERNAL_URL", url: safeUrl });
+  } catch (_err) {
+    /* ignored */
+  }
+  state.closeOverlay();
+}
+
+export async function openSiteWithQuery(site) {
+  const raw = String(site?.url || "").trim();
+  if (!raw) return;
+  const queryInput = state.shadowRoot?.querySelector(".query-input");
+  const query = queryInput instanceof HTMLTextAreaElement ? queryInput.value.trim() : "";
+  let url;
+  if (query && raw.includes("{query}")) {
+    url = raw.replace(/\{query\}/g, encodeURIComponent(query));
+  } else {
+    url = normalizeSiteHomeUrl(raw);
+  }
+  if (!url) return;
+  try {
+    await chrome.runtime.sendMessage({ type: "OPEN_EXTERNAL_URL", url });
   } catch (_err) {
     /* ignored */
   }
@@ -135,7 +156,127 @@ export async function runDefaultSearch() {
   await runGroup(state.groups[0]);
 }
 
-async function runGroup(group) {
+export function enterGroupPickMode() {
+  if (!state.shadowRoot || !state.groups.length) return;
+  state.isGroupPickMode = true;
+  const btns = state.shadowRoot.querySelectorAll(".group-btn");
+  btns.forEach((btn, i) => {
+    if (i < 9) {
+      btn.setAttribute("data-pick-num", String(i + 1));
+      btn.style.animationDelay = `${i * 0.06}s`;
+    }
+  });
+  const hintRow = state.shadowRoot.querySelector(".hint-row");
+  if (hintRow instanceof HTMLElement) {
+    hintRow.dataset.prevHtml = hintRow.innerHTML;
+    const count = Math.min(state.groups.length, 9);
+    hintRow.innerHTML = `<span><span class="kbd">1</span>${count > 1 ? `–<span class="kbd">${count}</span>` : ""} ${t("overlay_pickGroupHint", null, "选择搜索组")} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`;
+  }
+}
+
+export function exitGroupPickMode() {
+  state.isGroupPickMode = false;
+  if (!state.shadowRoot) return;
+  const btns = state.shadowRoot.querySelectorAll(".group-btn");
+  btns.forEach((btn) => {
+    btn.removeAttribute("data-pick-num");
+    btn.style.animationDelay = "";
+  });
+  const hintRow = state.shadowRoot.querySelector(".hint-row");
+  if (hintRow instanceof HTMLElement && hintRow.dataset.prevHtml) {
+    hintRow.innerHTML = hintRow.dataset.prevHtml;
+    delete hintRow.dataset.prevHtml;
+  }
+}
+
+export function getPickableSites() {
+  return state.customSites.filter((site) => normalizeSiteHomeUrl(site.url));
+}
+
+function flipGroups(callback) {
+  const container = state.shadowRoot?.querySelector(".groups");
+  if (!container) {
+    callback();
+    return;
+  }
+  container.classList.remove("flip-out", "flip-in");
+  container.classList.add("flip-out");
+  setTimeout(() => {
+    container.classList.remove("flip-out");
+    callback();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const c = state.shadowRoot?.querySelector(".groups");
+        if (!c) return;
+        c.classList.add("flip-in");
+        setTimeout(() => c.classList.remove("flip-in"), 200);
+      });
+    });
+  }, 180);
+}
+
+export function enterSitePickMode() {
+  if (!state.shadowRoot) return;
+  state.isSitePickMode = true;
+  const sites = getPickableSites();
+
+  flipGroups(() => {
+    const container = state.shadowRoot?.querySelector(".groups");
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!sites.length) {
+      const empty = document.createElement("span");
+      empty.style.cssText = "font-size:13px;color:#888;padding:4px 0;";
+      empty.textContent = t("overlay_noSites", null, "暂无可用站点");
+      container.appendChild(empty);
+    } else {
+      sites.forEach((site, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "site-pick-btn";
+        btn.textContent = site.name || site.id;
+        if (i < 9) {
+          btn.setAttribute("data-pick-num", String(i + 1));
+          btn.style.animationDelay = `${i * 0.06}s`;
+        }
+        btn.addEventListener("click", () => {
+          state.isSitePickMode = false;
+          openSiteWithQuery(site);
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    const hintRow = state.shadowRoot?.querySelector(".hint-row");
+    if (hintRow instanceof HTMLElement) {
+      if (!hintRow.dataset.prevHtml) {
+        hintRow.dataset.prevHtml = hintRow.innerHTML;
+      }
+      const count = Math.min(sites.length, 9);
+      hintRow.innerHTML = count > 0
+        ? `<span><span class="kbd">1</span>${count > 1 ? `–<span class="kbd">${count}</span>` : ""} ${t("overlay_pickSiteHint", null, "打开站点主页")} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`
+        : `<span>${t("overlay_noSites", null, "暂无可用站点")} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`;
+    }
+  });
+}
+
+export function exitSitePickMode() {
+  state.isSitePickMode = false;
+  if (!state.shadowRoot) return;
+
+  const hintRow = state.shadowRoot.querySelector(".hint-row");
+  if (hintRow instanceof HTMLElement && hintRow.dataset.prevHtml) {
+    hintRow.innerHTML = hintRow.dataset.prevHtml;
+    delete hintRow.dataset.prevHtml;
+  }
+
+  flipGroups(() => {
+    renderGroupsIfOpen();
+  });
+}
+
+export async function runGroup(group) {
   if (!state.shadowRoot) return;
   const queryInput = state.shadowRoot.querySelector(".query-input");
   const query = queryInput instanceof HTMLTextAreaElement ? queryInput.value.trim() : "";

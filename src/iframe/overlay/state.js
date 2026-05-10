@@ -15,11 +15,14 @@ export const state = {
   isOpen: false,
   groups: [],
   allSites: [],
+  customSites: [],
   historyEntries: [],
   promptGroups: [],
   uiPrefs: normalizeUiPrefs(),
   activePromptGroupId: null,
   isPromptPickerOpen: false,
+  isGroupPickMode: false,
+  isSitePickMode: false,
   overlayPreviewMgr: null,
   groupTooltipTimer: null,
   groupTooltipHideTimer: null,
@@ -101,15 +104,19 @@ export async function refreshAllSites() {
       : [];
     const knownIds = new Set(builtin.map((site) => site.id));
     const merged = [...builtin];
+    const validCustom = [];
     custom.forEach((site) => {
       if (site && !knownIds.has(site.id)) {
         merged.push(site);
         knownIds.add(site.id);
+        validCustom.push(site);
       }
     });
     state.allSites = merged;
+    state.customSites = validCustom;
   } catch (_err) {
     state.allSites = [];
+    state.customSites = [];
   }
 }
 

@@ -18,7 +18,7 @@ import {
   MAIN_HOTKEY_ESC,
   MAIN_HOTKEY_CONFIG,
 } from "./constants.js";
-import { renderGroupsIfOpen, hideGroupTooltip, runDefaultSearch } from "./groups-panel.js";
+import { renderGroupsIfOpen, hideGroupTooltip, runDefaultSearch, enterGroupPickMode, exitGroupPickMode, runGroup, enterSitePickMode, exitSitePickMode, getPickableSites, openSiteWithQuery } from "./groups-panel.js";
 import { renderHistoryIfOpen } from "./history-panel.js";
 import { renderPromptPickerIfOpen, fillRandomQuestion } from "./prompts-panel.js";
 
@@ -124,6 +124,18 @@ export function initQshotOverlay() {
     // it's open. Hotkey "toggle" lives in MAIN-world (overlay_main.js) to
     // avoid double-firing when both worlds match the same key.
     if (!isTopFrame || !state.isOpen) return;
+    if (event.key === "Escape" && state.isGroupPickMode) {
+      event.preventDefault();
+      event.stopPropagation();
+      exitGroupPickMode();
+      return;
+    }
+    if (event.key === "Escape" && state.isSitePickMode) {
+      event.preventDefault();
+      event.stopPropagation();
+      exitSitePickMode();
+      return;
+    }
     if (event.key !== "Escape") return;
     event.preventDefault();
     event.stopPropagation();
@@ -184,6 +196,8 @@ export function initQshotOverlay() {
 function closeOverlay() {
   if (!state.isOpen) return;
   state.isPromptPickerOpen = false;
+  state.isGroupPickMode = false;
+  state.isSitePickMode = false;
   hideGroupTooltip();
   if (state.overlayPreviewMgr) {
     state.overlayPreviewMgr.destroy();
@@ -353,7 +367,101 @@ function mountOverlay() {
 
   document.documentElement.appendChild(state.hostEl);
 
+  let spaceCount = 0;
+  let lastSpaceTime = 0;
+
   queryInput.addEventListener("keydown", async (event) => {
+    // Site pick mode: number keys open a site, space falls through for counter
+    if (state.isSitePickMode) {
+      if (event.key >= "1" && event.key <= "9" && !event.isComposing) {
+        event.preventDefault();
+        const sites = getPickableSites();
+        const site = sites[parseInt(event.key, 10) - 1];
+        state.isSitePickMode = false;
+        if (site) await openSiteWithQuery(site);
+        return;
+      }
+      if (event.key === "Escape") {
+        exitSitePickMode();
+        return;
+      }
+      if (event.key !== " ") {
+        exitSitePickMode();
+        spaceCount = 0;
+        lastSpaceTime = 0;
+        // fall through so the key still processes normally
+      }
+    }
+
+    // Group pick mode: number keys select a search group, space falls through for counter
+    if (state.isGroupPickMode) {
+      if (event.key >= "1" && event.key <= "9" && !event.isComposing) {
+        event.preventDefault();
+        const idx = parseInt(event.key, 10);
+        const group = state.groups[idx - 1];
+        exitGroupPickMode();
+        if (group) await runGroup(group);
+        return;
+      }
+      if (event.key === "Escape") {
+        exitGroupPickMode();
+        return;
+      }
+      if (event.key !== " ") {
+        exitGroupPickMode();
+        spaceCount = 0;
+        lastSpaceTime = 0;
+        // fall through so the key still processes normally
+      }
+    }
+
+    // Space tracking: double-space → group pick, triple-space → site pick
+    if (
+      event.key === " " &&
+      !event.isComposing &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      const now = Date.now();
+      if (now - lastSpaceTime <= 400) {
+        spaceCount++;
+      } else {
+        spaceCount = 1;
+      }
+      lastSpaceTime = now;
+
+      if (spaceCount === 2 && state.groups.length > 0 && !state.isSitePickMode) {
+        event.preventDefault();
+        const pos = queryInput.selectionStart ?? 0;
+        if (pos > 0 && queryInput.value[pos - 1] === " ") {
+          queryInput.value = queryInput.value.slice(0, pos - 1) + queryInput.value.slice(pos);
+          queryInput.setSelectionRange(pos - 1, pos - 1);
+          queryInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        if (!state.isGroupPickMode) enterGroupPickMode();
+        return;
+      }
+
+      if (spaceCount === 3) {
+        event.preventDefault();
+        if (state.isGroupPickMode) exitGroupPickMode();
+        spaceCount = 0;
+        lastSpaceTime = 0;
+        enterSitePickMode();
+        return;
+      }
+    } else if (
+      event.key !== "Shift" &&
+      event.key !== "Control" &&
+      event.key !== "Alt" &&
+      event.key !== "Meta"
+    ) {
+      spaceCount = 0;
+      lastSpaceTime = 0;
+    }
+
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();

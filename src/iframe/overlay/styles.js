@@ -167,6 +167,97 @@ const BASE = `
     border-color: #111;
     transform: translateY(-1px);
   }
+  @keyframes qshot-pick-wiggle {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-3px) rotate(-2deg); }
+    75% { transform: translateY(-2px) rotate(2deg); }
+  }
+  .group-btn[data-pick-num] {
+    position: relative;
+    animation: qshot-pick-wiggle 0.5s ease-in-out infinite;
+    border-color: #111;
+  }
+  .group-btn[data-pick-num]:hover {
+    animation: qshot-pick-wiggle 0.5s ease-in-out infinite;
+  }
+  .group-btn[data-pick-num]::before {
+    content: attr(data-pick-num);
+    position: absolute;
+    top: -10px;
+    left: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #111;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
+  @keyframes qshot-flip-out {
+    from { transform: perspective(500px) rotateY(0deg); opacity: 1; }
+    to   { transform: perspective(500px) rotateY(90deg); opacity: 0; }
+  }
+  @keyframes qshot-flip-in {
+    from { transform: perspective(500px) rotateY(-90deg); opacity: 0; }
+    to   { transform: perspective(500px) rotateY(0deg); opacity: 1; }
+  }
+  .groups.flip-out {
+    animation: qshot-flip-out 0.18s ease-in forwards;
+    pointer-events: none;
+  }
+  .groups.flip-in {
+    animation: qshot-flip-in 0.18s ease-out forwards;
+  }
+  .site-pick-btn {
+    min-width: 84px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.38);
+    border-radius: 999px;
+    background: #fff;
+    color: #111;
+    font-size: 14px;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  }
+  .site-pick-btn:hover {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+    transform: translateY(-1px);
+  }
+  .site-pick-btn[data-pick-num] {
+    animation: qshot-pick-wiggle 0.5s ease-in-out infinite;
+    border-color: rgba(0, 0, 0, 0.62);
+  }
+  .site-pick-btn[data-pick-num]::before {
+    content: attr(data-pick-num);
+    position: absolute;
+    top: -10px;
+    left: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
   .group-tooltip {
     position: absolute;
     z-index: 30;
