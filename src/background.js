@@ -1,8 +1,9 @@
-import { UI_PREFS_STORAGE_KEY } from "./shared/storage-keys.js";
+import { UI_PREFS_STORAGE_KEY, SEARCH_GROUPS_STORAGE_KEY, QUICK_ACCESS_SITES_KEY } from "./shared/storage-keys.js";
 import { ensureInitialStateDefaults } from "./background/initial-state.js";
 import { syncCommandShortcut } from "./background/shortcut-sync.js";
 import { openComparePage, runSearchGroup, openSiteTabAndSend } from "./background/tabs.js";
 import { warmupAiSites } from "./background/warmup.js";
+import { rebuildContextMenus } from "./background/context-menu.js";
 
 const SETTINGS_PAGE_URL = chrome.runtime.getURL("settings/settings.html");
 
@@ -10,15 +11,25 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log("Qshot - 子弹搜索 已安装");
   await ensureInitialStateDefaults();
   await syncCommandShortcut();
+  await rebuildContextMenus();
 });
 
 // 当用户在设置里修改快捷键时，同步更新 manifest command 的绑定，
 // 这样内置页面的自动弹窗也会跟着用户的设置走。
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes[UI_PREFS_STORAGE_KEY]) return;
-  const newPrefs = changes[UI_PREFS_STORAGE_KEY].newValue;
-  if (!newPrefs) return;
-  syncCommandShortcut(newPrefs).catch(() => {});
+  if (area !== "local") return;
+
+  if (changes[UI_PREFS_STORAGE_KEY]) {
+    const newPrefs = changes[UI_PREFS_STORAGE_KEY].newValue;
+    if (newPrefs) {
+      syncCommandShortcut(newPrefs).catch(() => {});
+      rebuildContextMenus().catch(() => {});
+    }
+  }
+
+  if (changes[SEARCH_GROUPS_STORAGE_KEY] || changes[QUICK_ACCESS_SITES_KEY]) {
+    rebuildContextMenus().catch(() => {});
+  }
 });
 
 // 当用户在任意页面触发 manifest command 时：

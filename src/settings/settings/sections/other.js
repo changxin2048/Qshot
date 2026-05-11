@@ -26,6 +26,7 @@ export function renderOtherSection() {
   otherSection.appendChild(createShortcutCard());
 }
 
+
 function createQuickSitesCard() {
   const MAX = 9;
   const card = document.createElement("div");

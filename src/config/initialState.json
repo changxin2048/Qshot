@@ -133,6 +133,8 @@
     "showPromptButton": true,
     "prewarmEnabled": true,
     "overlayShortcutEnabled": true,
+    "contextMenuEnabled": true,
+    "selectionSearchEnabled": false,
     "diagnosticLogsEnabled": false,
     "overlayShortcut": {
       "ctrlKey": true,

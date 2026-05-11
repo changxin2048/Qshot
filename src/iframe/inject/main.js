@@ -5,6 +5,7 @@ import { initEmbedSidebarFix } from "./sidebar-fix.js";
 import { deliverFilesToInput, extractInputSelectorsFromHandler } from "./file-paste.js";
 import { diagnosticLog } from "../../shared/diagnostics.js";
 import { findBuiltinSiteForHost } from "../../shared/site-registry.js";
+import { initSelectionToolbar } from "./selection-toolbar.js";
 
 const requestResults = new Map();
 const requestsInProgress = new Set();
@@ -337,4 +338,5 @@ export function initInjectScript() {
   if (!isGrokFrame) {
     initEmbedSidebarFix(resolveSite);
   }
+  initSelectionToolbar();
 }

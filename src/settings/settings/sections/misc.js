@@ -34,7 +34,35 @@ export function renderMiscSection() {
   miscSection.appendChild(topRow);
 
   miscSection.appendChild(createHomeDisplayCard());
+  miscSection.appendChild(createTextSelectionCard());
   miscSection.appendChild(createSearchConfigIoCard());
+}
+
+function createTextSelectionCard() {
+  const card = document.createElement("section");
+  card.className = "other-settings-card";
+  card.innerHTML = `
+    <div class="other-settings-intro">
+      <strong>${msg("settings_misc_textSelectionTitle", "\u9009\u6587\u641c\u7d22")}</strong>
+    </div>
+    <div class="other-settings-list two-col"></div>
+  `;
+  const list = card.querySelector(".other-settings-list");
+  list.appendChild(
+    createOtherSettingToggle(
+      "contextMenuEnabled",
+      msg("settings_other_contextMenuToggleTitle", "\u53f3\u952e\u641c\u7d22\u83dc\u5355"),
+      msg("settings_other_contextMenuToggleDesc", "\u9009\u4e2d\u6587\u5b57\u540e\u53f3\u952e\u53ef\u8c03\u7528\u641c\u7d22\u7ec4\u3002")
+    )
+  );
+  list.appendChild(
+    createOtherSettingToggle(
+      "selectionSearchEnabled",
+      msg("settings_other_selectionSearchToggleTitle", "\u5212\u8bcd\u641c\u7d22\u6c14\u6ce1"),
+      msg("settings_other_selectionSearchToggleDesc", "\u9009\u4e2d\u6587\u5b57\u540e\u81ea\u52a8\u5f39\u51fa\u641c\u7d22\u5feb\u6377\u6c14\u6ce1\u3002")
+    )
+  );
+  return card;
 }
 
 function createThemeModeCard() {
@@ -53,7 +81,7 @@ function createThemeModeCard() {
   card.className = "other-settings-card misc-inline-card";
   card.innerHTML = `
     <div class="other-settings-intro">
-      <strong>${msg("settings_misc_darkModeTitle", "深色模式")}</strong>
+      <strong>${msg("settings_misc_darkModeTitle", "\u4e3b\u9898\u989c\u8272")}</strong>
       <span>${msg("settings_misc_themeDesc", "可跟随浏览器配色，或固定为深色 / 浅色界面。")}</span>
     </div>
     <div class="about-locale-row">
@@ -214,22 +242,21 @@ function createHomeDisplayCard() {
   card.className = "other-settings-card";
   card.innerHTML = `
     <div class="other-settings-intro">
-      <strong>${msg("settings_other_homeDisplayTitle", "首页显示项")}</strong>
-      <span>${msg("settings_other_homeDisplayDesc", "控制首页里哪些模块显示，哪些模块隐藏。")}</span>
+      <strong>${msg("settings_other_homeDisplayTitle", "\u9996\u9875\u663e\u793a\u9879")}</strong>
     </div>
-    <div class="other-settings-list"></div>
+    <div class="other-settings-list two-col"></div>
   `;
   const list = card.querySelector(".other-settings-list");
   [
     {
       key: "showHistory",
-      title: msg("settings_other_showHistoryTitle", "显示历史搜索记录"),
-      desc: msg("settings_other_showHistoryDesc", "关闭后，首页下方的历史搜索区域将不再显示。")
+      title: msg("settings_other_showHistoryTitle", "\u663e\u793a\u641c\u7d22\u5386\u53f2"),
+      desc: msg("settings_other_showHistoryDesc", "\u5173\u95ed\u540e\u9996\u9875\u5386\u53f2\u533a\u57df\u4e0d\u518d\u663e\u793a\u3002")
     },
     {
       key: "showPromptButton",
-      title: msg("settings_other_showPromptTitle", "显示提示词按钮"),
-      desc: msg("settings_other_showPromptDesc", "关闭后，输入框下方的提示词入口将隐藏。")
+      title: msg("settings_other_showPromptTitle", "\u663e\u793a\u63d0\u793a\u8bcd\u6309\u9215"),
+      desc: msg("settings_other_showPromptDesc", "\u5173\u95ed\u540e\u8f93\u5165\u6846\u4e0b\u65b9\u7684\u63d0\u793a\u8bcd\u5165\u53e3\u5c06\u9690\u85cf\u3002")
     }
   ].forEach((item) => {
     list?.appendChild(createOtherSettingToggle(item.key, item.title, item.desc));

@@ -340,6 +340,21 @@
   gap: 4px;
 }
 
+/* 两列并排布局：用于首页显示项、选词搜索等 */
+.other-settings-list.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.other-settings-list.two-col .other-setting-row {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .other-settings-list.two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
 .other-setting-title {
   font-size: var(--fs-lg);
   font-weight: 500;
