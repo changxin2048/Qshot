@@ -1,6 +1,6 @@
 ## Qshot Privacy Policy
 
-Effective Date: 2026-04-21
+Effective Date: 2026-05-11
 
 Qshot is a locally-running browser extension that opens multiple AI/search sites side by side in a single page. When you explicitly trigger an action, it helps you fill in the same query into the input fields of those sites and submit them, so you can compare results easily.
 
@@ -111,6 +111,16 @@ To implement the above features, the Extension may request or use the following 
 
 - **Purpose**: Allows you to invoke the extension overlay/feature entry via keyboard shortcuts (e.g., `Ctrl+Q`)
 - **Data flow**: Local only; not uploaded to the developer's server
+
+#### 7.7 `alarms`
+
+- **Purpose**: Schedule periodic background wake-ups for the extension's Service Worker (required by Chrome MV3, where service workers are terminated after a period of inactivity). This keeps the background logic (e.g., context menu initialization, shortcut sync) responsive when you trigger actions after the browser has been idle for a while. Alarms do not transmit any data — they only serve as internal timers to keep the extension functional.
+- **Data flow**: Local only; not uploaded to the developer's server
+
+#### 7.8 `contextMenus`
+
+- **Purpose**: Add a right-click context menu entry ("Search with Qshot") that appears when you select text on any web page. Clicking this menu item sends the selected text as a search query to your configured AI/search sites — identical to typing in the extension popup and clicking Send. This action is always explicitly triggered by you.
+- **Data flow**: The selected text is processed locally and sent directly from your browser to the target sites you have chosen. It is not uploaded to the developer's server.
 
 ---
 
