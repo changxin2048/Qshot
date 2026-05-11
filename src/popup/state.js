@@ -3,8 +3,8 @@ import {
   SEARCH_HISTORY_STORAGE_KEY,
   PROMPT_GROUPS_STORAGE_KEY,
   UI_PREFS_STORAGE_KEY,
-  CUSTOM_SITES_STORAGE_KEY,
 } from "../shared/storage-keys.js";
+import { loadEnabledSites } from "../shared/site-registry.js";
 
 // Shared mutable state for the popup. Modules import the singleton and
 // mutate fields directly instead of passing N arguments around.
@@ -119,24 +119,7 @@ export async function loadUiPrefs() {
 
 export async function refreshAllSites() {
   try {
-    const [builtinResp, stored] = await Promise.all([
-      fetch(chrome.runtime.getURL("config/siteHandlers.json")),
-      chrome.storage.local.get([CUSTOM_SITES_STORAGE_KEY]),
-    ]);
-    const payload = await builtinResp.json();
-    const builtin = (payload.sites || []).filter((s) => s.enabled !== false);
-    const custom = Array.isArray(stored[CUSTOM_SITES_STORAGE_KEY])
-      ? stored[CUSTOM_SITES_STORAGE_KEY]
-      : [];
-    const knownIds = new Set(builtin.map((s) => s.id));
-    const merged = [...builtin];
-    custom.forEach((s) => {
-      if (s && !knownIds.has(s.id)) {
-        merged.push(s);
-        knownIds.add(s.id);
-      }
-    });
-    state.allSites = merged;
+    state.allSites = await loadEnabledSites({ fallbackEmpty: true });
   } catch (_e) {
     state.allSites = [];
   }

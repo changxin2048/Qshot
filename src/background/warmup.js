@@ -2,10 +2,24 @@ import { UI_PREFS_STORAGE_KEY } from "../shared/storage-keys.js";
 import { AI_SITE_IDS, loadEnabledSites } from "./sites.js";
 
 const WARMUP_COOLDOWN_MS = 5 * 60 * 1000;
-let lastWarmupAt = 0;
+const WARMUP_STATE_KEY = "qshotLastWarmupAt";
+
+function getWarmupStorageArea() {
+  return chrome.storage.session || chrome.storage.local;
+}
+
+async function getLastWarmupAt() {
+  const stored = await getWarmupStorageArea().get([WARMUP_STATE_KEY]);
+  return Number(stored[WARMUP_STATE_KEY]) || 0;
+}
+
+async function setLastWarmupAt(value) {
+  await getWarmupStorageArea().set({ [WARMUP_STATE_KEY]: value });
+}
 
 export async function warmupAiSites() {
   const now = Date.now();
+  const lastWarmupAt = await getLastWarmupAt();
   if (now - lastWarmupAt < WARMUP_COOLDOWN_MS) {
     return { skipped: true, reason: "cooldown" };
   }
@@ -22,7 +36,7 @@ export async function warmupAiSites() {
     return { skipped: true, reason: "no-targets" };
   }
 
-  lastWarmupAt = now;
+  await setLastWarmupAt(now);
 
   // Review note (CWS/Edge Add-ons):
   // - This "prewarm" is only for performance (reducing first-load latency for heavy AI sites).

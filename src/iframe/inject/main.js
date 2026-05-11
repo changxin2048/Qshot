@@ -141,25 +141,24 @@ async function setupUrlReporting() {
   }
   if (!site) return;
 
-  reportCurrentUrl(site);
+  scheduleUrlReports(site);
 
   const originalPushState = history.pushState.bind(history);
   history.pushState = function patchedPushState(...args) {
     const value = originalPushState(...args);
-    reportCurrentUrl(site);
+    scheduleUrlReports(site);
     return value;
   };
 
   const originalReplaceState = history.replaceState.bind(history);
   history.replaceState = function patchedReplaceState(...args) {
     const value = originalReplaceState(...args);
-    reportCurrentUrl(site);
+    scheduleUrlReports(site);
     return value;
   };
 
-  window.addEventListener("popstate", () => reportCurrentUrl(site));
-  window.addEventListener("hashchange", () => reportCurrentUrl(site));
-  window.setInterval(() => reportCurrentUrl(site), 1500);
+  window.addEventListener("popstate", () => scheduleUrlReports(site));
+  window.addEventListener("hashchange", () => scheduleUrlReports(site));
 }
 
 function reportCurrentUrl(site) {

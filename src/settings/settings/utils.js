@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { loadBuiltinSites as loadBuiltinSitesFromRegistry } from "../../shared/site-registry.js";
 
 export function escapeHtml(value) {
   return String(value)
@@ -18,7 +19,7 @@ export function getGroupById(groupId) {
 }
 
 export async function loadBuiltinSites() {
-  const response = await fetch(chrome.runtime.getURL("config/siteHandlers.json"));
-  const payload = await response.json();
-  return (payload.sites || []).filter((site) => site.enabled !== false);
+  return loadBuiltinSitesFromRegistry({ fallbackEmpty: false }).then((sites) =>
+    sites.filter((site) => site.enabled !== false)
+  );
 }

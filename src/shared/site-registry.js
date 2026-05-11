@@ -1,3 +1,5 @@
+import { CUSTOM_SITES_STORAGE_KEY } from "./storage-keys.js";
+
 const SITE_HANDLERS_PATH = "config/siteHandlers.json";
 
 let builtinSites = null;
@@ -22,15 +24,72 @@ export async function loadBuiltinSites(options = {}) {
     })
     .catch((error) => {
       if (!fallbackEmpty) throw error;
-      builtinSites = [];
-      domainIndex = new Map();
-      return builtinSites;
+      return [];
     })
     .finally(() => {
       builtinSitesPromise = null;
     });
 
   return builtinSitesPromise;
+}
+
+export function normalizeCustomSite(raw) {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const name = String(raw.name || "").trim();
+  const url = String(raw.url || "").trim();
+  const id = String(raw.id || "").trim();
+  if (!id || !name || !url) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    url,
+    enabled: raw.enabled !== false,
+    supportIframe: raw.supportIframe !== false,
+    supportUrlQuery: raw.supportUrlQuery !== false && url.includes("{query}"),
+    matchPatterns: Array.isArray(raw.matchPatterns)
+      ? raw.matchPatterns.map((pattern) => String(pattern))
+      : [],
+    isCustom: true
+  };
+}
+
+export async function loadCustomSitesFromStorage() {
+  try {
+    const stored = await chrome.storage.local.get([CUSTOM_SITES_STORAGE_KEY]);
+    const list = Array.isArray(stored[CUSTOM_SITES_STORAGE_KEY]) ? stored[CUSTOM_SITES_STORAGE_KEY] : [];
+    return list
+      .map((item) => normalizeCustomSite(item))
+      .filter((site) => site && site.enabled !== false);
+  } catch (_error) {
+    return [];
+  }
+}
+
+export function mergeSiteLists(builtin, custom) {
+  const result = Array.isArray(builtin) ? [...builtin] : [];
+  const seen = new Set(result.map((site) => site.id));
+  (custom || []).forEach((site) => {
+    if (!site || seen.has(site.id)) {
+      return;
+    }
+    result.push(site);
+    seen.add(site.id);
+  });
+  return result;
+}
+
+export async function loadEnabledSites(options = {}) {
+  const builtin = (await loadBuiltinSites(options)).filter((site) => site.enabled !== false);
+  const custom = Array.isArray(options.customSites)
+    ? options.customSites.map((item) => normalizeCustomSite(item)).filter((site) => site && site.enabled !== false)
+    : await loadCustomSitesFromStorage();
+  return mergeSiteLists(builtin, custom);
 }
 
 export async function findBuiltinSiteForHost(hostname, options = {}) {

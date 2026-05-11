@@ -31,6 +31,17 @@ export function handleFrameMessage(event) {
     return;
   }
 
+  if (payload.type === "QSHOT_PASTE_RESULT") {
+    diagnosticLog("compare.message", "paste-result", {
+      siteId: payload.siteId,
+      requestId: payload.requestId,
+      ok: payload.ok,
+      error: payload.error,
+    });
+    resolvePendingFileDispatch(payload);
+    return;
+  }
+
   if (payload.type !== "QSHOT_RESULT") {
     diagnosticLog("compare.message", "unknown-type", { payloadType: payload.type, siteId: payload.siteId });
     return;
@@ -56,6 +67,35 @@ export function handleFrameMessage(event) {
     setSiteStatus(payload.siteId, payload.message || "iframe 页面已处理查询。", "success");
   } else {
     setSiteStatus(payload.siteId, payload.error || "iframe 页面处理失败。", "error");
+  }
+}
+
+function resolvePendingFileDispatch(payload) {
+  const requestId = payload?.requestId;
+  if (!requestId) {
+    return;
+  }
+
+  const pending = state.pendingFileDispatches.get(requestId);
+  if (!pending) {
+    return;
+  }
+
+  state.pendingFileDispatches.delete(requestId);
+  if (pending.timerId) {
+    window.clearTimeout(pending.timerId);
+  }
+
+  if (payload.ok) {
+    setSiteStatus(payload.siteId, payload.message || "文件已发送到卡片输入框。", "success");
+  } else {
+    setSiteStatus(payload.siteId, payload.error || "文件发送失败。", "error");
+  }
+
+  try {
+    pending.resolve(payload);
+  } catch (_error) {
+    /* ignore resolver failure */
   }
 }
 

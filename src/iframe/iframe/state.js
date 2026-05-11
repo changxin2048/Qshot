@@ -19,11 +19,6 @@ export const SITE_CATEGORIES = [
   { id: "custom", label: "自定义", builtinIds: [] }
 ];
 
-// 本轮会话内保留的历史问答快照上限。每条快照包含所有当前卡片的完整回答文本，
-// 单条可能几十 KB 起步，长会话下不设上限会让页面内存持续增长。
-// 20 条足够覆盖绝大多数"连续追问 + 一次性导出"的场景。
-export const SESSION_SNAPSHOTS_MAX = 20;
-
 export const state = {
   sites: [],
   allSites: [],
@@ -35,6 +30,7 @@ export const state = {
   shouldAutoSend: false,
   restoreHistoryEntryId: null,
   pendingDispatches: new Map(),
+  pendingFileDispatches: new Map(),
   cardSizeLevel: "medium",
   layoutRows: 1,
   layoutMode: "grid",
@@ -56,8 +52,6 @@ export const state = {
   userIsScrolling: false,
   userScrollTimer: null,
   isSending: false,
-  sessionSnapshots: [],
-  sessionVersion: 0,
   lastSearchQuery: null,
   lastSearchTime: null,
   isAddSitePickerOpen: false,

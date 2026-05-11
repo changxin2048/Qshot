@@ -28,13 +28,15 @@ alwaysApply: true
 ```
 src/
 ├── manifest.json
-├── background.js           薄壳入口，import ./background/ 子模块
+├── background.js           薄壳入口，import ./background/main.js
 ├── background/
+│   ├── main.js             service worker 主入口编排
 │   ├── initial-state.js    首次安装写 storage
 │   ├── tabs.js             compare tab 管理
 │   ├── warmup.js           预热逻辑
 │   ├── sites.js            站点注册表操作
 │   ├── shortcut-sync.js    快捷键同步
+│   ├── keepalive.js        Service Worker Alarm 保活
 │   └── context-menu.js     右键菜单（选中文字后搜索）
 │
 ├── config/
@@ -46,14 +48,16 @@ src/
 │
 ├── iframe/
 │   ├── inject.js / overlay.js / iframe.js   薄壳入口
+│   ├── overlay_frame.js    子 frame 轻量转发器（热键/关闭信号转发到 top frame）
 │   ├── inject/         注入到所有页面的 content script
 │   │   ├── main.js / constants.js / dom-utils.js
 │   │   ├── executor.js / editors.js / extractor.js
 │   │   ├── sidebar-fix.js / file-paste.js / selection-toolbar.js
 │   ├── overlay_main.js     MAIN world 钩子（读页面全局变量）
 │   ├── overlay/            Ctrl+Q 悬浮搜索层
-│   │   ├── main.js / state.js / styles.js（CSS-in-JS，注入 Shadow DOM）
+│   │   ├── main.js / state.js / styles.js（样式聚合入口，注入 Shadow DOM）
 │   │   ├── constants.js / groups-panel.js / history-panel.js / prompts-panel.js
+│   │   └── styles-picker.js / styles-dark.js
 │   ├── iframe.html / iframe.css（@import 薄壳）
 │   ├── styles/         CSS 按功能拆分（01-light / 02-dark-base / 03-dark-panels）
 │   └── iframe/             compare 多站点并排页
@@ -67,7 +71,8 @@ src/
 │       └── export-modal.js     导出弹窗 UI
 │
 ├── popup/
-│   ├── popup.html / popup.css（@import 薄壳） / popup.js（入口）
+│   ├── popup.html / popup.css（@import 薄壳） / popup.js（薄壳入口）
+│   ├── main.js             popup 主入口
 │   ├── styles/         CSS 按功能拆分（01-base-composer ~ 05-dark-mode）
 │   ├── state.js / sections.js / prompt-edit-modal.js
 │
@@ -100,18 +105,19 @@ src/
 | 页面内容提取（截图/复制） | `inject/extractor.js` |
 | 富文本编辑器适配（输入框） | `inject/editors.js` |
 | Ctrl+Q 悬浮层 UI | `overlay/main.js` + `overlay/styles.js` |
+| 悬浮层子 frame 转发 | `iframe/overlay_frame.js` + `overlay_main.js` |
 | 悬浮层分组/历史/提示词面板 | `overlay/groups-panel.js` / `history-panel.js` / `prompts-panel.js` |
 | compare 页多栏布局 | `iframe/layout.js` |
 | compare 页卡片渲染 | `iframe/cards-render.js` |
 | compare 页截图导出 | `iframe/export-modal.js` + `iframe/export-collect.js` + `iframe/export-sections.js` |
 | compare 页查询分发 | `iframe/send.js` |
-| popup 弹窗 UI | `popup/sections.js` + `popup/popup.css` |
+| popup 弹窗 UI | `popup/main.js` + `popup/sections.js` + `popup/popup.css` |
 | 设置页某个 tab | `settings/settings/sections/<tab>.js` |
 | 全局 storage 读写 | `settings/settings/store.js` + `shared/storage-keys.js` |
 | 国际化文案 | `shared/i18n.js` |
 | 右键菜单（选中搜索） | `background/context-menu.js` |
 | 划词搜索气泡 | `inject/selection-toolbar.js` |
-| service worker（标签管理等） | `background/<对应模块>.js` |
+| service worker（标签管理等） | `background/main.js` + `background/<对应模块>.js` |
 | DNR 请求改写规则 | `config/rules-source.mjs`（不要改 dist/config/rules.json） |
 
 ---

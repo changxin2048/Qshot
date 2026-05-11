@@ -4,6 +4,10 @@ let host = null;
 let shadow = null;
 let toolbar = null;
 let isVisible = false;
+let cachedUiPrefs = {};
+let cachedGroups = [];
+let cacheInitPromise = null;
+let storageWatcherInstalled = false;
 
 // Q 图标 SVG 路径（取自 about-logo.svg 的 Q 字形部分）
 const Q_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 113 133" fill="currentColor" width="14" height="14" aria-hidden="true">
@@ -79,6 +83,9 @@ export function initSelectionToolbar() {
   // 跳过扩展自身页面（chrome-extension:// 不会被 <all_urls> 匹配，防御性检查）
   if (location.protocol === "chrome-extension:") return;
 
+  primeToolbarCache().catch(() => {});
+  installStorageWatcher();
+
   // 修复1：capture:true —— 在 stopPropagation 生效之前拦截事件
   // 这样 AI 页面、富文本编辑器等拦截了 mouseup 的场景也能触发气泡
   document.addEventListener("mouseup", onMouseUp, true);
@@ -105,16 +112,10 @@ async function onMouseUp(e) {
   const rect = selection.getRangeAt(0).getBoundingClientRect();
   if (!rect.width || !rect.height) return;
 
-  // 读取开关（缓存到模块变量，避免每次都读 storage）
-  const prefsRes = await chrome.storage.local.get(UI_PREFS_STORAGE_KEY);
-  const uiPrefs = prefsRes[UI_PREFS_STORAGE_KEY] || {};
-  if (uiPrefs.selectionSearchEnabled === false) return;
+  await primeToolbarCache();
+  if (cachedUiPrefs.selectionSearchEnabled === false) return;
 
-  // 读取搜索组
-  const storageRes = await chrome.storage.local.get(SEARCH_GROUPS_STORAGE_KEY);
-  const groups = (storageRes[SEARCH_GROUPS_STORAGE_KEY] || []).filter(
-    (g) => g.enabled !== false
-  );
+  const groups = cachedGroups;
   if (!groups.length) return;
 
   renderToolbar(text, groups, rect);
@@ -211,4 +212,47 @@ function makeDivider() {
   const d = document.createElement("div");
   d.className = "divider";
   return d;
+}
+
+function installStorageWatcher() {
+  if (storageWatcherInstalled) {
+    return;
+  }
+  storageWatcherInstalled = true;
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") {
+      return;
+    }
+    if (changes[UI_PREFS_STORAGE_KEY]) {
+      cachedUiPrefs = changes[UI_PREFS_STORAGE_KEY].newValue || {};
+    }
+    if (changes[SEARCH_GROUPS_STORAGE_KEY]) {
+      cachedGroups = normalizeGroups(changes[SEARCH_GROUPS_STORAGE_KEY].newValue);
+    }
+  });
+}
+
+async function primeToolbarCache() {
+  if (cacheInitPromise) {
+    return cacheInitPromise;
+  }
+
+  cacheInitPromise = chrome.storage.local
+    .get([UI_PREFS_STORAGE_KEY, SEARCH_GROUPS_STORAGE_KEY])
+    .then((stored) => {
+      cachedUiPrefs = stored[UI_PREFS_STORAGE_KEY] || {};
+      cachedGroups = normalizeGroups(stored[SEARCH_GROUPS_STORAGE_KEY]);
+    })
+    .catch(() => {
+      cachedUiPrefs = {};
+      cachedGroups = [];
+    });
+
+  return cacheInitPromise;
+}
+
+function normalizeGroups(input) {
+  return Array.isArray(input)
+    ? input.filter((group) => group && group.enabled !== false)
+    : [];
 }

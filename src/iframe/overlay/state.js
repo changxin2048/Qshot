@@ -3,10 +3,10 @@ import {
   SEARCH_HISTORY_STORAGE_KEY,
   PROMPT_GROUPS_STORAGE_KEY,
   UI_PREFS_STORAGE_KEY,
-  CUSTOM_SITES_STORAGE_KEY,
   QUICK_ACCESS_SITES_KEY,
 } from "../../shared/storage-keys.js";
 import { normalizeShortcut } from "../../shared/shortcut.js";
+import { loadCustomSitesFromStorage, loadEnabledSites } from "../../shared/site-registry.js";
 
 // Shared mutable state for the overlay. Each panel module imports this
 // singleton and reads/mutates the same fields instead of juggling callbacks.
@@ -97,27 +97,12 @@ export async function refreshGroups() {
 
 export async function refreshAllSites() {
   try {
-    const [builtinResp, stored] = await Promise.all([
-      fetch(chrome.runtime.getURL("config/siteHandlers.json")),
-      chrome.storage.local.get([CUSTOM_SITES_STORAGE_KEY]),
+    const [allSites, customSites] = await Promise.all([
+      loadEnabledSites({ fallbackEmpty: true }),
+      loadCustomSitesFromStorage(),
     ]);
-    const payload = await builtinResp.json();
-    const builtin = (payload.sites || []).filter((site) => site.enabled !== false);
-    const custom = Array.isArray(stored[CUSTOM_SITES_STORAGE_KEY])
-      ? stored[CUSTOM_SITES_STORAGE_KEY]
-      : [];
-    const knownIds = new Set(builtin.map((site) => site.id));
-    const merged = [...builtin];
-    const validCustom = [];
-    custom.forEach((site) => {
-      if (site && !knownIds.has(site.id)) {
-        merged.push(site);
-        knownIds.add(site.id);
-        validCustom.push(site);
-      }
-    });
-    state.allSites = merged;
-    state.customSites = validCustom;
+    state.allSites = allSites;
+    state.customSites = customSites;
   } catch (_err) {
     state.allSites = [];
     state.customSites = [];

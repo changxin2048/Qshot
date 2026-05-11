@@ -5,6 +5,8 @@ import { loadEnabledSites } from "./sites.js";
 const ROOT_ID = "qshot-root";
 const GROUP_PREFIX = "qshot-group-";
 const SITE_PREFIX = "qshot-site-";
+let rebuildQueue = Promise.resolve();
+let rebuildGeneration = 0;
 
 // 在模块加载时注册点击监听（service worker 每次启动均执行一次）
 chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
@@ -14,6 +16,14 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
  * 在安装/更新、以及相关 storage key 变动时调用。
  */
 export async function rebuildContextMenus() {
+  const generation = ++rebuildGeneration;
+  rebuildQueue = rebuildQueue
+    .catch(() => {})
+    .then(() => rebuildContextMenusNow(generation));
+  return rebuildQueue;
+}
+
+async function rebuildContextMenusNow(generation) {
   await chrome.contextMenus.removeAll();
 
   const prefsResult = await chrome.storage.local.get(UI_PREFS_STORAGE_KEY);
@@ -33,7 +43,9 @@ export async function rebuildContextMenus() {
 
   if (enabledGroups.length === 0 && quickSites.length === 0) return;
 
-  chrome.contextMenus.create({
+  if (generation !== rebuildGeneration) return;
+
+  await createContextMenu({
     id: ROOT_ID,
     title: "Qshot \u641c\u7d22",
     contexts: ["selection"],
@@ -41,13 +53,14 @@ export async function rebuildContextMenus() {
 
   if (enabledGroups.length > 0) {
     for (const group of enabledGroups) {
+      if (generation !== rebuildGeneration) return;
       const siteNames = (group.siteIds || [])
         .map((id) => allSites.find((s) => s.id === id)?.name)
         .filter(Boolean);
       const preview = siteNames.length
         ? "  (" + (siteNames.length > 5 ? siteNames.slice(0, 5).join(" \u00b7 ") + "..." : siteNames.join(" \u00b7 ")) + ")"
         : "";
-      chrome.contextMenus.create({
+      await createContextMenu({
         id: GROUP_PREFIX + group.id,
         parentId: ROOT_ID,
         title: group.name + preview,
@@ -57,7 +70,8 @@ export async function rebuildContextMenus() {
   }
 
   if (quickSites.length > 0) {
-    chrome.contextMenus.create({
+    if (generation !== rebuildGeneration) return;
+    await createContextMenu({
       id: "qshot-sites-sep",
       parentId: ROOT_ID,
       type: "separator",
@@ -65,7 +79,8 @@ export async function rebuildContextMenus() {
     });
 
     for (const site of quickSites) {
-      chrome.contextMenus.create({
+      if (generation !== rebuildGeneration) return;
+      await createContextMenu({
         id: SITE_PREFIX + site.id,
         parentId: ROOT_ID,
         title: site.name,
@@ -109,4 +124,16 @@ async function loadQuickAccessSiteIds() {
   return Array.isArray(result[QUICK_ACCESS_SITES_KEY])
     ? result[QUICK_ACCESS_SITES_KEY]
     : [];
+}
+
+function createContextMenu(options) {
+  return new Promise((resolve, reject) => {
+    chrome.contextMenus.create(options, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
+  });
 }

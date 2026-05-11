@@ -13,7 +13,7 @@
 // iframe 加载事件里再补发一次。
 
 import { state, elements } from "./state.js";
-import { setGlobalStatus } from "./status.js";
+import { setGlobalStatus, setSiteStatus } from "./status.js";
 import { createRequestId } from "./utils.js";
 import { diagnosticLog } from "../../shared/diagnostics.js";
 
@@ -21,6 +21,7 @@ import { diagnosticLog } from "../../shared/diagnostics.js";
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 // 每次选取最多接受的文件数量。
 const MAX_FILES_PER_PICK = 8;
+const FILE_ACK_TIMEOUT_MS = 10000;
 
 function formatSize(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "";
@@ -49,8 +50,12 @@ async function fileToEntry(file) {
 // 给单个卡片派发一批文件。已加载就直接 postMessage；未加载就挂起，等卡片 load
 // 事件触发时再调用 dispatchPendingFilesForCard。
 function dispatchFilesToCard(ref, entries) {
-  if (!ref || !ref.iframeEl) return false;
-  if (entries.length === 0) return false;
+  if (!ref || !ref.iframeEl) {
+    return { accepted: false, queued: false, ackPromise: null };
+  }
+  if (entries.length === 0) {
+    return { accepted: false, queued: false, ackPromise: null };
+  }
 
   if (!ref.loaded || !ref.iframeEl.contentWindow) {
     if (!Array.isArray(ref.pendingFilesOnLoad)) {
@@ -61,8 +66,29 @@ function dispatchFilesToCard(ref, entries) {
       site: ref.site,
       fileCount: entries.length,
     });
-    return true;
+    setSiteStatus(ref.site.id, "卡片尚未加载完成，文件已排队，稍后自动发送...");
+    return { accepted: true, queued: true, ackPromise: null };
   }
+
+  const requestId = createRequestId();
+  const ackPromise = new Promise((resolve) => {
+    const timerId = window.setTimeout(() => {
+      state.pendingFileDispatches.delete(requestId);
+      setSiteStatus(ref.site.id, "文件发送超时，未收到卡片确认。", "error");
+      resolve({
+        ok: false,
+        siteId: ref.site.id,
+        requestId,
+        error: "文件发送超时，未收到卡片确认。"
+      });
+    }, FILE_ACK_TIMEOUT_MS);
+
+    state.pendingFileDispatches.set(requestId, {
+      siteId: ref.site.id,
+      timerId,
+      resolve
+    });
+  });
 
   try {
     ref.iframeEl.contentWindow.postMessage(
@@ -70,21 +96,38 @@ function dispatchFilesToCard(ref, entries) {
         type: "QSHOT_PASTE_FILES",
         files: entries,
         site: ref.site,
-        requestId: createRequestId(),
+        requestId,
       },
       "*"
     );
     diagnosticLog("compare.files", "post-message", {
       site: ref.site,
+      requestId,
       fileCount: entries.length,
     });
-    return true;
+    setSiteStatus(ref.site.id, "文件已发送，等待站点确认接收...");
+    return { accepted: true, queued: false, ackPromise };
   } catch (error) {
+    const pending = state.pendingFileDispatches.get(requestId);
+    if (pending?.timerId) {
+      window.clearTimeout(pending.timerId);
+    }
+    state.pendingFileDispatches.delete(requestId);
     diagnosticLog("compare.files", "post-message-error", {
       site: ref.site,
       error: error.message,
     });
-    return false;
+    setSiteStatus(ref.site.id, error.message || "文件发送失败。", "error");
+    return {
+      accepted: false,
+      queued: false,
+      ackPromise: Promise.resolve({
+        ok: false,
+        siteId: ref.site.id,
+        requestId,
+        error: error.message || "文件发送失败。"
+      })
+    };
   }
 }
 
@@ -146,13 +189,18 @@ async function ingestFileList(fileList) {
   );
 
   let dispatchedCount = 0;
+  let queuedCount = 0;
   for (let i = 0; i < targets.length; i += 1) {
     const ref = targets[i];
     setGlobalStatus(
       `正在向第 ${i + 1}/${targets.length} 个卡片（${ref.site.name || ref.site.id}）发送文件...`
     );
-    if (dispatchFilesToCard(ref, entries)) {
+    const result = dispatchFilesToCard(ref, entries);
+    if (result.accepted) {
       dispatchedCount += 1;
+    }
+    if (result.queued) {
+      queuedCount += 1;
     }
     // 给 inject 侧 focus + 200ms wait + paste + 上传初始化的时间，再切下一张卡。
     if (i < targets.length - 1) {
@@ -161,8 +209,10 @@ async function ingestFileList(fileList) {
   }
 
   setGlobalStatus(
-    `已发送 ${entries.length} 个文件（${formatSize(totalSize)}）到 ${dispatchedCount} 个 AI 卡片，` +
-      "请稍候各卡片完成上传后再提交问题。"
+    `已开始向 ${dispatchedCount} 个 AI 卡片发送 ${entries.length} 个文件（${formatSize(totalSize)}），` +
+      (queuedCount > 0
+        ? `${queuedCount} 个卡片待加载后自动补发，请等待各卡片确认上传。`
+        : "请等待各卡片确认上传后再提交问题。")
   );
 }
 

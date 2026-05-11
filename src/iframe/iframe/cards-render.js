@@ -15,7 +15,7 @@ import {
   renderCardNavStrip,
   updateScrollEdgeBtns,
 } from "./layout.js";
-import { dispatchSearchWithRetries, abortPendingWorkForSite } from "./send.js";
+import { abortPendingWorkForSite, flushPendingQueryAfterLoad, settlePendingQuery } from "./send.js";
 import { dispatchPendingFilesForCard } from "./file-upload.js";
 
 export function renderCards() {
@@ -209,10 +209,8 @@ export function refreshSiteCard(ref, options = {}) {
   // immediate=true（默认）：单卡片主动刷新，立即加载、不受并发槽位限制。
   // immediate=false：  批量刷新（例如"新建对话"），统一走并发队列，避免所有卡片同时冷启动。
   const { immediate = true } = options;
+  abortPendingWorkForSite(ref.site.id, { reason: "卡片已刷新，已取消上一条发送任务" });
   ref.loaded = false;
-  ref.pendingQuery = "";
-  ref.pendingQueryDelayMs = 0;
-  ref.pendingQueryResolver = null;
   ref.pendingFilesOnLoad = [];
   ref.iframeEl = null;
   createIframeBody(ref, { immediate });
@@ -269,21 +267,7 @@ export function createIframeBody(ref, options = {}) {
     releaseLoadSlot(ref);
     hideLoadingOverlay(ref);
     setSiteStatus(ref.site.id, "iframe 已加载，可直接在卡片内操作。");
-
-    if (ref.pendingQuery) {
-      const queuedQuery = ref.pendingQuery;
-      const queuedDelayMs = Number.isFinite(ref.pendingQueryDelayMs) ? ref.pendingQueryDelayMs : 0;
-      const queuedResolver = ref.pendingQueryResolver;
-      ref.pendingQuery = "";
-      ref.pendingQueryDelayMs = 0;
-      ref.pendingQueryResolver = null;
-      dispatchSearchWithRetries(ref, queuedQuery, queuedDelayMs)
-        .then((result) => {
-          if (typeof queuedResolver === "function") {
-            queuedResolver(result);
-          }
-        });
-    }
+    flushPendingQueryAfterLoad(ref);
 
     // 卡片在加载完成前用户可能已经选好了文件，dispatchPendingFilesForCard
     // 会把挂在 ref.pendingFilesOnLoad 上的那一批文件 postMessage 进去。
@@ -296,6 +280,11 @@ export function createIframeBody(ref, options = {}) {
       loadState.resolved = true;
       clearIframeTimers(ref);
       releaseLoadSlot(ref);
+      settlePendingQuery(ref, {
+        ok: false,
+        siteId: ref.site.id,
+        error: "卡片加载失败，自动发送已取消"
+      });
       renderFallback(ref, "加载失败，目标站点未响应或拒绝了连接。");
     }
   });
@@ -319,6 +308,11 @@ export function createIframeBody(ref, options = {}) {
 export function renderFallback(ref, message) {
   // 进入 fallback 意味着当前 iframe 已作废，同时收掉本张卡片残留的加载/超时定时器。
   clearIframeTimers(ref);
+  settlePendingQuery(ref, {
+    ok: false,
+    siteId: ref.site.id,
+    error: "卡片未完成加载，自动发送已取消"
+  });
   ref.loadingEl = null;
   ref.bodyEl.innerHTML = `
     <div class="fallback-panel">

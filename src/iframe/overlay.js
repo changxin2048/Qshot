@@ -1,18 +1,7 @@
+import "../shared/i18n.js";
+import "../shared/prompt-item.js";
 import { initQshotOverlay } from "./overlay/main.js";
 
-if (!isGrokSubFrame()) {
+if (window === window.top) {
   initQshotOverlay();
-}
-
-function isGrokSubFrame() {
-  if (window === window.top) {
-    return false;
-  }
-
-  try {
-    const host = window.location.hostname.replace(/^www\./, "").toLowerCase();
-    return host === "grok.com";
-  } catch (_error) {
-    return false;
-  }
 }

@@ -1,4 +1,4 @@
-import { state, elements, BASE_CONFIG, SESSION_SNAPSHOTS_MAX } from "./state.js";
+import { state, elements, BASE_CONFIG } from "./state.js";
 import {
   getSelectedSites,
   getQuery,
@@ -16,7 +16,6 @@ import {
 } from "./layout.js";
 import { clearIframeTimers, removeFromLoadQueue, pumpLoadQueue } from "./load-queue.js";
 import { saveSearchHistory, refreshHistoryEntryUrls } from "./history.js";
-import { quickCaptureAllResponses } from "./export.js";
 import { diagnosticLog } from "../../shared/diagnostics.js";
 
 export async function handleSendSelected(options = {}) {
@@ -52,10 +51,6 @@ export async function handleSendSelected(options = {}) {
     lockContainerScroll();
     toggleGlobalButtons(true);
     setGlobalStatus(`正在向 ${selectedSites.length} 个站点分发问题...`);
-
-    if (state.lastSearchQuery) {
-      capturePreviousSessionSnapshot(state.lastSearchQuery, state.lastSearchTime, state.sessionVersion);
-    }
 
     state.lastSearchQuery = query;
     state.lastSearchTime = new Date().toLocaleString();
@@ -135,28 +130,6 @@ async function sendSitesWithConcurrency(sites, query) {
   return results;
 }
 
-function capturePreviousSessionSnapshot(query, time, sessionVersion) {
-  quickCaptureAllResponses()
-    .then((prevResponses) => {
-      if (state.sessionVersion !== sessionVersion) {
-        return;
-      }
-
-      state.sessionSnapshots.push({
-        query,
-        time,
-        responses: prevResponses
-      });
-      // 超过上限则丢弃最旧的快照，防止长会话内存无限增长。
-      if (state.sessionSnapshots.length > SESSION_SNAPSHOTS_MAX) {
-        state.sessionSnapshots = state.sessionSnapshots.slice(-SESSION_SNAPSHOTS_MAX);
-      }
-    })
-    .catch(() => {
-      // 快照失败不阻断发送流程
-    });
-}
-
 export async function maybeAutoSendFromUrl() {
   if (!state.shouldAutoSend) {
     return;
@@ -196,6 +169,11 @@ export async function sendSmartToSite(site, query, dispatchDelayMs = 0) {
 
   if (!ref.loaded) {
     diagnosticLog("compare.site", "wait-for-iframe-load", { site });
+    settlePendingQuery(ref, {
+      ok: false,
+      siteId: site.id,
+      error: "已取消上一条等待中的发送任务"
+    });
     return new Promise((resolve) => {
       ref.pendingQuery = query;
       ref.pendingQueryDelayMs = dispatchDelayMs;
@@ -332,7 +310,7 @@ export function dispatchSearchWithRetries(ref, query, initialDelayMs) {
       query,
       resolve,
       attempts: 0,
-      maxAttempts: 3,
+      maxAttempts: BASE_CONFIG.tabSendRetryCount || 8,
       retryDelayMs: BASE_CONFIG.tabSendRetryDelayMs || 1800,
       timerId: null,
       completed: false
@@ -487,12 +465,68 @@ export function finalizePendingDispatch(requestId, result) {
   pendingDispatch.resolve(result);
 }
 
+export function settlePendingQuery(ref, result) {
+  if (!ref) {
+    return false;
+  }
+
+  const resolver = typeof ref.pendingQueryResolver === "function"
+    ? ref.pendingQueryResolver
+    : null;
+  ref.pendingQueryResolver = null;
+  ref.pendingQuery = "";
+  ref.pendingQueryDelayMs = 0;
+
+  if (!resolver) {
+    return false;
+  }
+
+  try {
+    resolver(result);
+  } catch (_error) {
+    /* ignore resolver failure */
+  }
+  return true;
+}
+
+export function flushPendingQueryAfterLoad(ref) {
+  if (!ref?.pendingQuery) {
+    return;
+  }
+
+  const queuedQuery = ref.pendingQuery;
+  const queuedDelayMs = Number.isFinite(ref.pendingQueryDelayMs) ? ref.pendingQueryDelayMs : 0;
+  const resolver = typeof ref.pendingQueryResolver === "function"
+    ? ref.pendingQueryResolver
+    : null;
+  ref.pendingQuery = "";
+  ref.pendingQueryDelayMs = 0;
+  ref.pendingQueryResolver = null;
+
+  if (!resolver) {
+    return;
+  }
+
+  dispatchSearchWithRetries(ref, queuedQuery, queuedDelayMs)
+    .then((result) => {
+      resolver(result);
+    })
+    .catch((error) => {
+      resolver({
+        ok: false,
+        siteId: ref.site?.id,
+        error: error?.message || "自动发送失败"
+      });
+    });
+}
+
 // 卡片被关闭时调用：
 // 1) 取消本站点在 pendingDispatches 里所有尚未完成的 setTimeout 重试，并 resolve 对应 Promise。
 // 2) 如果 sendSmartToSite 在等待 iframe 加载完（pendingQueryResolver 未执行），也一并 resolve，
 //    避免 handleSendSelected 里的 Promise.all 永不完成、state.isSending 卡在 true。
-export function abortPendingWorkForSite(siteId) {
-  diagnosticLog("compare.dispatch", "abort-site", { siteId });
+export function abortPendingWorkForSite(siteId, options = {}) {
+  const { reason = "卡片已关闭" } = options;
+  diagnosticLog("compare.dispatch", "abort-site", { siteId, reason });
   const toCancel = [];
   state.pendingDispatches.forEach((pending, requestId) => {
     if (pending?.ref?.site?.id === siteId) {
@@ -503,22 +537,12 @@ export function abortPendingWorkForSite(siteId) {
     finalizePendingDispatch(requestId, {
       ok: false,
       siteId,
-      error: "卡片已关闭"
+      error: reason
     });
   });
 
   const ref = state.cardRefs.get(siteId);
-  if (ref?.pendingQueryResolver) {
-    const resolver = ref.pendingQueryResolver;
-    ref.pendingQueryResolver = null;
-    ref.pendingQuery = "";
-    ref.pendingQueryDelayMs = 0;
-    try {
-      resolver({ ok: false, siteId, error: "卡片已关闭" });
-    } catch (_e) {
-      /* resolver 异常不影响关闭流程 */
-    }
-  }
+  settlePendingQuery(ref, { ok: false, siteId, error: reason });
   // 顺带收掉本张卡片 iframe 相关的延迟加载 / 超时回退定时器，
   // 避免关闭卡片后 25s 内仍触发 renderFallback 操作已 detach 的 DOM。
   clearIframeTimers(ref);

@@ -17,6 +17,7 @@ import {
   renderSiteNav,
 } from "./layout.js";
 import { loadSites } from "./sites-loader.js";
+import { loadBuiltinSites } from "../../shared/site-registry.js";
 import { renderCards, refreshSiteCard } from "./cards-render.js";
 import { handleSendSelected, maybeAutoSendFromUrl } from "./send.js";
 import {
@@ -38,7 +39,7 @@ import {
 } from "./add-site.js";
 import { showExportModal } from "./export.js";
 import { bindFileUploadEvents } from "./file-upload.js";
-import { UI_PREFS_STORAGE_KEY } from "../../shared/storage-keys.js";
+import { UI_PREFS_STORAGE_KEY, CUSTOM_SITES_STORAGE_KEY } from "../../shared/storage-keys.js";
 
 let _darkModeMediaListener = null;
 
@@ -77,8 +78,24 @@ export function initComparePage() {
 
 async function start() {
   try {
-    const prefsStored = await chrome.storage.local.get([UI_PREFS_STORAGE_KEY]);
-    const uiPrefs = prefsStored[UI_PREFS_STORAGE_KEY] || {};
+    // 把原本 3 次串行的 chrome.storage.local.get（UI 偏好 / 布局历史 / 自定义站点）
+    // 合并为 1 次批量读取，同时与 siteHandlers.json 的 fetch 并行发起，
+    // 消除两次额外的 IPC 往返，加快首屏到可交互的时间。
+    const allStorageKeys = [
+      UI_PREFS_STORAGE_KEY,
+      STORAGE_KEYS.cardSizeLevel,
+      STORAGE_KEYS.layoutRows,
+      STORAGE_KEYS.layoutMode,
+      STORAGE_KEYS.searchHistory,
+      STORAGE_KEYS.promptGroups,
+      CUSTOM_SITES_STORAGE_KEY,
+    ];
+    const [stored] = await Promise.all([
+      chrome.storage.local.get(allStorageKeys),
+      loadBuiltinSites({ fallbackEmpty: true }),
+    ]);
+
+    const uiPrefs = stored[UI_PREFS_STORAGE_KEY] || {};
     const lm = uiPrefs.localeMode;
     window.__QSHOT_I18N__?.setLocaleMode?.(lm === "zh" || lm === "en" ? lm : "auto");
     applyDarkModeToDoc(uiPrefs.darkMode);
@@ -88,9 +105,9 @@ async function start() {
     bindFileUploadEvents();
     hydrateQueryFromUrl();
     updateSendBtnState();
-    await restorePreferences();
+    await restorePreferences(stored);
     bindPromptPickerEvents();
-    await loadSites();
+    await loadSites(stored[CUSTOM_SITES_STORAGE_KEY]);
     const restoredEntry = applyHistoryRestoreFromUrl();
     renderCards();
     setGlobalStatus(restoredEntry
@@ -335,11 +352,8 @@ function bindEvents() {
 
     // "新建对话"意味着所有卡片都已 reload，上一轮的对话在页面里已经不存在。
     // 把本轮会话相关的内存状态也一起清掉：
-    //   - sessionSnapshots：之前各轮问答的快照，清掉避免导出时混入已不可见的旧对话
     //   - lastSearchQuery / lastSearchTime：上次问题元信息，清掉避免导出标题显示陈旧问题
     // 搜索历史（state.searchHistory）是持久化的用户资产，不在此清理。
-    state.sessionSnapshots = [];
-    state.sessionVersion += 1;
     state.lastSearchQuery = null;
     state.lastSearchTime = null;
     state.currentHistoryEntryId = null;
@@ -428,13 +442,15 @@ function hydrateQueryFromUrl() {
   }
 }
 
-async function restorePreferences() {
-  const stored = await chrome.storage.local.get([
+// preloaded: 由 start() 批量预读的 storage 数据（可选）。
+// 传入时直接使用，否则回退到单独读取 storage（保持向后兼容）。
+async function restorePreferences(preloaded) {
+  const stored = preloaded || await chrome.storage.local.get([
     STORAGE_KEYS.cardSizeLevel,
     STORAGE_KEYS.layoutRows,
     STORAGE_KEYS.layoutMode,
     STORAGE_KEYS.searchHistory,
-    STORAGE_KEYS.promptGroups
+    STORAGE_KEYS.promptGroups,
   ]);
 
   if (typeof stored[STORAGE_KEYS.cardSizeLevel] === "string") {

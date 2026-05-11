@@ -7,22 +7,23 @@
     embedTimeoutMs: 25000,
     // iframe 加载完成后立即发送查询，不再人为等待
     postLoadSendDelayMs: 0,
-    tabSendRetryCount: 3,
-    tabSendRetryDelayMs: 12000,
+    tabSendRetryCount: 8,
+    tabSendRetryDelayMs: 2000,
     // 错峰加载：多站点场景下每个 iframe 之间的 src 赋值间隔（ms）。
     // 避免 6~8 个重型 SPA 同时初始化导致白屏。
-    iframeStaggerMs: 120,
+    iframeStaggerMs: 80,
     // 发送并发数：同一轮追问最多同时向几张 AI 卡片写入并提交。
-    // 4 接近早期速度，但仍保留小并发池，避免 6~8 张重型编辑器同时抢焦点/抢渲染。
-    sendConcurrency: 4,
+    // 发送只是向已加载的 iframe 发 postMessage，极轻量，不需要池化限流；
+    // 设为 20 实际等效于"有几张卡就同时发几张"，消除排队等待。
+    sendConcurrency: 20,
     // 并发槽位上限：同一时刻最多允许多少张 iframe 处于"加载中"状态。
     // 其余卡片先把 DOM 创建出来并显示"等待加载中…"，在前面的卡片加载完成（load/error/超时）后
     // 依次补位，避免 6~8 个重型 SPA 同时冷启动打满 CPU / 网络。
     //   - 低配机 / 弱网：建议 2
-    //   - 默认：3（对大多数机器在稳定性和首屏速度之间取平衡）
-    //   - 高配 + 光纤 + 并发卡片数不多时可以调到 4~5
+    //   - 默认：4（提升首批并发数，减少排队等待）
+    //   - 高配 + 光纤 + 并发卡片数不多时可以调到 5~6
     //   - 设成 99 等效于关闭并发限制
-    iframeMaxConcurrent: 3,
+    iframeMaxConcurrent: 4,
     debug: true
   };
 

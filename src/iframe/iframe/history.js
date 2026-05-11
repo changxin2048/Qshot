@@ -3,11 +3,25 @@ import { createRequestId, setQueryInputValue } from "./utils.js";
 
 export async function savePreferences() {
   await chrome.storage.local.set({
-    [STORAGE_KEYS.cardSizeLevel]: state.cardSizeLevel,
-    [STORAGE_KEYS.layoutRows]: state.layoutRows,
-    [STORAGE_KEYS.layoutMode]: state.layoutMode,
     [STORAGE_KEYS.searchHistory]: state.searchHistory
   });
+}
+
+async function mutateStoredHistory(mutator) {
+  const stored = await chrome.storage.local.get([STORAGE_KEYS.searchHistory]);
+  const latestHistory = Array.isArray(stored[STORAGE_KEYS.searchHistory])
+    ? stored[STORAGE_KEYS.searchHistory]
+    : [];
+  const nextHistory = mutator(latestHistory);
+  const resolvedHistory = Array.isArray(nextHistory) ? nextHistory.slice(0, 50) : latestHistory.slice(0, 50);
+  const changed = nextHistory !== latestHistory;
+  state.searchHistory = resolvedHistory;
+  if (changed) {
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.searchHistory]: resolvedHistory
+    });
+  }
+  return { changed, history: resolvedHistory };
 }
 
 export async function saveSearchHistory(query, sites) {
@@ -32,19 +46,9 @@ export async function saveSearchHistory(query, sites) {
     }
   });
 
-  // 多窗口并发写入保护：先从存储读取最新列表，再把本窗口的新条目
-  // 插入到最前面，避免两个窗口各持旧快照互相覆盖导致记录丢失。
-  try {
-    const stored = await chrome.storage.local.get([STORAGE_KEYS.searchHistory]);
-    const latestHistory = Array.isArray(stored[STORAGE_KEYS.searchHistory])
-      ? stored[STORAGE_KEYS.searchHistory]
-      : state.searchHistory;
-    state.searchHistory = [entry, ...latestHistory.filter((h) => h?.id !== entry.id)].slice(0, 50);
-  } catch (_err) {
-    state.searchHistory = [entry, ...state.searchHistory].slice(0, 50);
-  }
-
-  await savePreferences();
+  await mutateStoredHistory((latestHistory) => {
+    return [entry, ...latestHistory.filter((item) => item?.id !== entry.id)];
+  });
   renderHistoryList();
   return entry.id;
 }
@@ -63,32 +67,33 @@ export async function refreshHistoryEntryUrls(entryId, sites) {
     latestUrlsBySiteId.set(site.id, String(ref?.currentUrl || site.url || ""));
   });
 
-  let changed = false;
-  state.searchHistory = state.searchHistory.map((entry) => {
-    if (entry.id !== entryId || !Array.isArray(entry.sites)) {
-      return entry;
-    }
-
-    const updatedSites = entry.sites.map((site) => {
-      const nextUrl = latestUrlsBySiteId.get(site?.id);
-      if (!nextUrl || site.url === nextUrl) {
-        return site;
+  const { changed } = await mutateStoredHistory((latestHistory) => {
+    let hasChanged = false;
+    const nextHistory = latestHistory.map((entry) => {
+      if (entry.id !== entryId || !Array.isArray(entry.sites)) {
+        return entry;
       }
-      changed = true;
-      return {
-        ...site,
-        url: nextUrl
-      };
-    });
 
-    return changed ? { ...entry, sites: updatedSites } : entry;
+      const updatedSites = entry.sites.map((site) => {
+        const nextUrl = latestUrlsBySiteId.get(site?.id);
+        if (!nextUrl || site.url === nextUrl) {
+          return site;
+        }
+        hasChanged = true;
+        return {
+          ...site,
+          url: nextUrl
+        };
+      });
+
+      return hasChanged ? { ...entry, sites: updatedSites } : entry;
+    });
+    return hasChanged ? nextHistory : latestHistory;
   });
 
   if (!changed) {
     return;
   }
-
-  await savePreferences();
   renderHistoryList();
 }
 
@@ -322,7 +327,13 @@ function clearRestoreHistoryParamFromUrl() {
 }
 
 export async function deleteHistoryEntry(id) {
-  state.searchHistory = state.searchHistory.filter((entry) => entry.id !== id);
+  const { changed } = await mutateStoredHistory((latestHistory) => {
+    const nextHistory = latestHistory.filter((entry) => entry.id !== id);
+    return nextHistory.length === latestHistory.length ? latestHistory : nextHistory;
+  });
+  if (!changed) {
+    return;
+  }
   for (const [siteId, entryId] of state.historyEntryIdBySiteId.entries()) {
     if (entryId === id) {
       state.historyEntryIdBySiteId.delete(siteId);
@@ -331,15 +342,18 @@ export async function deleteHistoryEntry(id) {
   if (state.currentHistoryEntryId === id) {
     state.currentHistoryEntryId = null;
   }
-  await savePreferences();
   renderHistoryList();
 }
 
 export async function clearAllHistory() {
-  state.searchHistory = [];
+  const { changed } = await mutateStoredHistory((latestHistory) => {
+    return latestHistory.length > 0 ? [] : latestHistory;
+  });
+  if (!changed) {
+    return;
+  }
   state.currentHistoryEntryId = null;
   state.historyEntryIdBySiteId.clear();
-  await savePreferences();
   renderHistoryList();
 }
 
@@ -362,32 +376,33 @@ export async function updateLatestHistoryUrl(siteId, url) {
     return;
   }
 
-  let changed = false;
-  state.searchHistory = state.searchHistory.map((entry) => {
-    if (entry.id !== entryId || !Array.isArray(entry.sites)) {
-      return entry;
-    }
-
-    const updatedSites = entry.sites.map((site) => {
-      if (!site || site.id !== siteId || site.url === url) {
-        return site;
+  const { changed } = await mutateStoredHistory((latestHistory) => {
+    let hasChanged = false;
+    const nextHistory = latestHistory.map((entry) => {
+      if (entry.id !== entryId || !Array.isArray(entry.sites)) {
+        return entry;
       }
 
-      changed = true;
-      return {
-        ...site,
-        url
-      };
-    });
+      const updatedSites = entry.sites.map((site) => {
+        if (!site || site.id !== siteId || site.url === url) {
+          return site;
+        }
 
-    return changed ? { ...entry, sites: updatedSites } : entry;
+        hasChanged = true;
+        return {
+          ...site,
+          url
+        };
+      });
+
+      return hasChanged ? { ...entry, sites: updatedSites } : entry;
+    });
+    return hasChanged ? nextHistory : latestHistory;
   });
 
   if (!changed) {
     return;
   }
-
-  await savePreferences();
   renderHistoryList();
 }
 

@@ -1,0 +1,9 @@
+﻿release: v1.1.4 perf and privacy policy update
+
+- Bump version to 1.1.4
+- Set minimum_chrome_version to 111 (world:MAIN requires Chrome 111+)
+- Align esbuild target to chrome111
+- Fix send delay: tabSendRetryDelayMs 12000 to 2000, retryCount 3 to 8
+- Fix send concurrency: sendConcurrency 4 to 20, all cards dispatch in parallel
+- PRIVACY.md: add alarms and contextMenus permission explanations, update date
+- .gitignore: exclude zip and release directories

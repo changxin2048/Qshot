@@ -15,3 +15,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+
+# Release packages
+*.zip
+qshot-*/
