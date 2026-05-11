@@ -136,18 +136,36 @@ export async function openSiteWithQuery(site) {
   if (!raw) return;
   const queryInput = state.shadowRoot?.querySelector(".query-input");
   const query = queryInput instanceof HTMLTextAreaElement ? queryInput.value.trim() : "";
-  let url;
-  if (query && raw.includes("{query}")) {
-    url = raw.replace(/\{query\}/g, encodeURIComponent(query));
+
+  if (!query) {
+    const url = normalizeSiteHomeUrl(raw);
+    if (!url) return;
+    try {
+      await chrome.runtime.sendMessage({ type: "OPEN_EXTERNAL_URL", url });
+    } catch (_err) { /* ignored */ }
+    state.closeOverlay();
+    return;
+  }
+
+  // Sites with URL query template (search engines, social media): substitute in URL directly.
+  if (site?.supportUrlQuery && raw.includes("{query}")) {
+    const url = raw.replace(/\{query\}/g, encodeURIComponent(query));
+    try {
+      await chrome.runtime.sendMessage({ type: "OPEN_EXTERNAL_URL", url });
+    } catch (_err) { /* ignored */ }
   } else {
-    url = normalizeSiteHomeUrl(raw);
+    // AI sites and others without URL template: use the exact same code path as
+    // search group "tabs" mode — a single-site group routed through runSearchGroup →
+    // openSitesInTabs → waitForTabComplete → sendQueryToTab → content script inject.
+    try {
+      await chrome.runtime.sendMessage({
+        type: "RUN_SEARCH_GROUP",
+        group: { mode: "tabs", siteIds: [site.id] },
+        query,
+      });
+    } catch (_err) { /* ignored */ }
   }
-  if (!url) return;
-  try {
-    await chrome.runtime.sendMessage({ type: "OPEN_EXTERNAL_URL", url });
-  } catch (_err) {
-    /* ignored */
-  }
+
   state.closeOverlay();
 }
 
@@ -256,8 +274,13 @@ export function enterSitePickMode() {
         hintRow.dataset.prevHtml = hintRow.innerHTML;
       }
       const count = Math.min(sites.length, 9);
+      const queryInput = state.shadowRoot?.querySelector(".query-input");
+      const hasQuery = queryInput instanceof HTMLTextAreaElement && queryInput.value.trim().length > 0;
+      const siteActionHint = hasQuery
+        ? t("overlay_pickSiteSearchHint", null, "搜索")
+        : t("overlay_pickSiteHint", null, "打开站点主页");
       hintRow.innerHTML = count > 0
-        ? `<span><span class="kbd">1</span>${count > 1 ? `–<span class="kbd">${count}</span>` : ""} ${t("overlay_pickSiteHint", null, "打开站点主页")} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`
+        ? `<span><span class="kbd">1</span>${count > 1 ? `–<span class="kbd">${count}</span>` : ""} ${siteActionHint} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`
         : `<span>${t("overlay_noSites", null, "暂无可用站点")} · <span class="kbd">Esc</span> ${t("overlay_cancelPick", null, "取消")}</span>`;
     }
   });

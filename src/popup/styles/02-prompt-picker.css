@@ -1,0 +1,160 @@
+.popup-prompt-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -4px;
+  width: calc(100% + 8px);
+  min-height: 228px;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 5;
+}
+
+.search-composer:not(.is-expanded) .popup-prompt-picker {
+  top: calc(100% + 10px);
+}
+
+.search-composer.is-picker-inline-open {
+  margin-bottom: 238px;
+}
+
+.popup-prompt-picker[hidden] {
+  display: none;
+}
+
+.popup-prompt-groups {
+  padding: 10px;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fbfbfb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.popup-prompt-groups::-webkit-scrollbar,
+.popup-prompt-list::-webkit-scrollbar {
+  width: 6px;
+}
+.popup-prompt-groups::-webkit-scrollbar-track,
+.popup-prompt-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.popup-prompt-groups::-webkit-scrollbar-thumb,
+.popup-prompt-list::-webkit-scrollbar-thumb {
+  background: #dcdcdc;
+  border-radius: 3px;
+}
+.popup-prompt-groups::-webkit-scrollbar-thumb:hover,
+.popup-prompt-list::-webkit-scrollbar-thumb:hover {
+  background: #bbbbbb;
+}
+
+.popup-prompt-group-item {
+  flex-shrink: 0;
+}
+
+.popup-prompt-group-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #111111;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.popup-prompt-group-item.is-active,
+.popup-prompt-group-item:hover {
+  background: #111111;
+  color: #ffffff;
+}
+
+.popup-prompt-list {
+  max-height: 260px;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popup-prompt-item {
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 0;
+  background: #ffffff;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #111111;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.popup-prompt-item:last-child {
+  border-bottom: none;
+}
+
+.popup-prompt-item:hover,
+.popup-history-item:hover,
+.popup-group-btn:hover,
+.composer-icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.popup-prompt-item:hover {
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.popup-prompt-picker-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #888888;
+}
+
+.popup-prompt-picker-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  background: #fbfbfb;
+}
+
+.popup-prompt-picker-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #aaaaaa;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.popup-prompt-picker-settings-btn:hover {
+  color: #555555;
+  transform: none;
+}

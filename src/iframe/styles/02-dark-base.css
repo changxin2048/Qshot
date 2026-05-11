@@ -1,0 +1,223 @@
+/* ============================================================
+   Dark Mode — html[data-theme="dark"]
+   Part 1: base variables, composer, card-nav, cards, history
+   ============================================================ */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --border-color: #3f3f46;
+  --card-bg: #27272a;
+  --page-bg: #18181b;
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --secondary: #1e2a4a;
+  --warning-bg: #2a1f10;
+  --warning-border: #92400e;
+}
+
+html[data-theme="dark"] body {
+  background: #18181b;
+  color: #f4f4f5;
+}
+
+/* ── Composer (底部输入框) ──────────────────────────────── */
+html[data-theme="dark"] .composer-input-shell {
+  border-color: #3f3f46;
+  background: #27272a;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .bottom-query-input {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .bottom-query-input::placeholder {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .composer-inline-icon,
+html[data-theme="dark"] .composer-tool-icon-btn {
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .composer-inline-icon:hover:not(:disabled),
+html[data-theme="dark"] .composer-tool-icon-btn:hover:not(:disabled) {
+  background: #3f3f46;
+}
+
+html[data-theme="dark"] .composer-inline-icon-send {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+html[data-theme="dark"] .composer-inline-icon-send.is-empty {
+  background: #3f3f46;
+  color: #71717a;
+}
+
+html[data-theme="dark"] .composer-inline-icon-send:not(.is-empty):hover {
+  background: #d4d4d8;
+}
+
+/* ── 站点标签条 (card nav) ──────────────────────────────── */
+html[data-theme="dark"] .card-nav-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(39, 39, 42, 0.94);
+  color: #d4d4d8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .card-nav-chip:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #f4f4f5;
+}
+
+html[data-theme="dark"] .card-nav-add-btn {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: #27272a;
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .card-nav-add-btn:hover,
+html[data-theme="dark"] .card-nav-add-btn[aria-expanded="true"] {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #f4f4f5;
+}
+
+/* ── 卡片悬浮操作按钮 ───────────────────────────────────── */
+html[data-theme="dark"] .card-hover-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: #27272a;
+  color: #f4f4f5;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 卡片 iframe 包装器 ─────────────────────────────────── */
+html[data-theme="dark"] .iframe-card-body {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ── 加载中面板 ─────────────────────────────────────────── */
+html[data-theme="dark"] .iframe-loading-panel {
+  background: #27272a;
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .iframe-loading-spinner {
+  border-color: #3f3f46;
+  border-top-color: #f4f4f5;
+}
+
+html[data-theme="dark"] .iframe-loading-title {
+  color: #f4f4f5;
+}
+
+/* ── 站点标题 ───────────────────────────────────────────── */
+html[data-theme="dark"] .site-title {
+  color: #f4f4f5;
+}
+
+/* ── 滚动边缘按钮 ───────────────────────────────────────── */
+html[data-theme="dark"] .scroll-edge-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: #27272a;
+  color: #a1a1aa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .scroll-edge-btn:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #f4f4f5;
+}
+
+/* ── 历史记录面板 ───────────────────────────────────────── */
+html[data-theme="dark"] .history-panel {
+  background: #27272a;
+  border-left-color: rgba(255, 255, 255, 0.07);
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .history-panel-header h3 {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .history-clear-btn {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #71717a;
+}
+
+html[data-theme="dark"] .history-clear-btn:hover {
+  background: #3d1515;
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+html[data-theme="dark"] .history-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #71717a;
+}
+
+html[data-theme="dark"] .history-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+html[data-theme="dark"] .history-item {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #2a2a2e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="dark"] .history-item:hover {
+  background: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .history-item-title {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .history-item-meta {
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .history-site-link {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #3f3f46;
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .history-site-link:hover {
+  background: #f4f4f5;
+  border-color: #f4f4f5;
+  color: #18181b;
+}
+
+html[data-theme="dark"] .history-item-delete-btn {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: #3f3f46;
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .history-item-delete-btn:hover {
+  background: #3d1515;
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+html[data-theme="dark"] .history-restore-btn {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: #3f3f46;
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .history-restore-btn:hover {
+  background: #f4f4f5;
+  border-color: #f4f4f5;
+  color: #18181b;
+}

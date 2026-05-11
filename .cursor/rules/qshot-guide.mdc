@@ -16,7 +16,7 @@ alwaysApply: true
 ## 硬性约束
 
 - **单个 JS 文件 ≤ 500 行**。超出必须拆子模块，参考 `src/iframe/inject/` 的拆分方式。
-- CSS 同样控制在 500 行以内；`src/settings/styles/` 的 01~10 多文件是范例，`popup.css` / `iframe.css` 待拆分。
+- CSS 同样控制在 500 行以内；`src/settings/styles/`、`src/popup/styles/`、`src/iframe/styles/` 均为多文件范例。
 - 纯数据 JSON（如 `siteHandlers.json`）不受行数限制。
 - 禁止引入新的 npm **运行时**依赖（devDependencies 构建工具除外）。
 - 不要随便改 `dist/` 下的文件，那是构建产物；源码在 `src/`。
@@ -54,15 +54,21 @@ src/
 │   ├── overlay/            Ctrl+Q 悬浮搜索层
 │   │   ├── main.js / state.js / styles.js（CSS-in-JS，注入 Shadow DOM）
 │   │   ├── constants.js / groups-panel.js / history-panel.js / prompts-panel.js
-│   ├── iframe.html / iframe.css
+│   ├── iframe.html / iframe.css（@import 薄壳）
+│   ├── styles/         CSS 按功能拆分（01-light / 02-dark-base / 03-dark-panels）
 │   └── iframe/             compare 多站点并排页
 │       ├── main.js / state.js / layout.js / cards-render.js
 │       ├── load-queue.js / send.js / history.js / prompts.js
-│       ├── add-site.js / export.js / status.js / utils.js
-│       ├── sites-loader.js / file-upload.js
+│       ├── add-site.js / status.js / utils.js / sites-loader.js / file-upload.js
+│       ├── export.js（@re-export 薄壳）
+│       ├── export-collect.js   IO 层：收集/请求/清洗 + buildExportFilename/downloadFile
+│       ├── export-format.js    文本变换：flattenMarkdown / parseQA / renderSingleModelBlock
+│       ├── export-sections.js  章节构建：generateExportContent / renderSectionsToFormat 等
+│       └── export-modal.js     导出弹窗 UI
 │
 ├── popup/
-│   ├── popup.html / popup.css / popup.js（入口）
+│   ├── popup.html / popup.css（@import 薄壳） / popup.js（入口）
+│   ├── styles/         CSS 按功能拆分（01-base-composer ~ 05-dark-mode）
 │   ├── state.js / sections.js / prompt-edit-modal.js
 │
 ├── settings/
@@ -97,7 +103,7 @@ src/
 | 悬浮层分组/历史/提示词面板 | `overlay/groups-panel.js` / `history-panel.js` / `prompts-panel.js` |
 | compare 页多栏布局 | `iframe/layout.js` |
 | compare 页卡片渲染 | `iframe/cards-render.js` |
-| compare 页截图导出 | `iframe/export.js` |
+| compare 页截图导出 | `iframe/export-modal.js` + `iframe/export-collect.js` + `iframe/export-sections.js` |
 | compare 页查询分发 | `iframe/send.js` |
 | popup 弹窗 UI | `popup/sections.js` + `popup/popup.css` |
 | 设置页某个 tab | `settings/settings/sections/<tab>.js` |

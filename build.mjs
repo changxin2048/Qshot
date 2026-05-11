@@ -38,6 +38,7 @@ const SRC_ASSETS = [
   "config/random-questions",
   "popup/popup.html",
   "popup/popup.css",
+  "popup/styles",
   "popup/icon128.png",
   "popup/logo.svg",
   "settings/settings.html",
@@ -46,6 +47,7 @@ const SRC_ASSETS = [
   "settings/about-logo.svg",
   "iframe/iframe.html",
   "iframe/iframe.css",
+  "iframe/styles",
 ];
 
 // Top-level meta files — kept at repo root for GitHub display, also copied

@@ -190,7 +190,7 @@
               "div[role='button'][tabindex='0']"
             ],
             "submitWaitMs": 6000,
-            "postClickVerifyMs": 1400
+            "postClickVerifyMs": 700
           },
           {
             "action": "sendKeys",
@@ -222,6 +222,8 @@
       ],
       "notes": "优先在页面内 iframe 卡片中加载 Qwen / 通义千问，自动发送依赖页面当前 DOM 结构。",
       "searchHandler": {
+        "submitVerifyWaitMs": 1200,
+        "submitVerifyRetries": 3,
         "steps": [
           {
             "action": "focus",
@@ -262,23 +264,11 @@
             ]
           },
           {
-            "action": "wait",
-            "duration": 60
-          },
-          {
-            "action": "click",
-            "selectors": [
-              "button[type='submit']",
-              "button[aria-label*='发送']",
-              "button[aria-label*='Send']",
-              "button[title*='发送']",
-              "button[title*='Send']"
-            ],
-            "optional": true
-          },
-          {
             "action": "smartSubmit",
             "selectors": [
+              ".t-chat__sender div[contenteditable='true']",
+              ".t-chat-sender div[contenteditable='true']",
+              "[class*='sender'] div[contenteditable='true']",
               "textarea",
               "div[contenteditable='true']"
             ],
@@ -290,7 +280,9 @@
               "button[title*='Send']",
               "[role='button'][aria-label*='发送']",
               "[role='button'][aria-label*='Send']"
-            ]
+            ],
+            "submitWaitMs": 8000,
+            "postClickVerifyMs": 800
           },
           {
             "action": "sendKeys",
@@ -320,7 +312,7 @@
       "notes": "优先在页面内 iframe 卡片中加载豆包，先走通用输入框选择器。",
       "searchHandler": {
         "submitVerifyWaitMs": 1800,
-        "submitVerifyRetries": 1,
+        "submitVerifyRetries": 3,
         "steps": [
           {
             "action": "focus",
@@ -357,8 +349,7 @@
               "[role='button'][aria-label*='Send']",
               "div[role='button'][tabindex='0']"
             ],
-            "submitWaitMs": 2500,
-            "postClickVerifyMs": 1800,
+            "submitWaitMs": 8000,
             "enterFallbackAfterClick": false
           },
           {
