@@ -59,7 +59,9 @@ function createTextSelectionCard() {
     createOtherSettingToggle(
       "selectionSearchEnabled",
       msg("settings_other_selectionSearchToggleTitle", "\u5212\u8bcd\u641c\u7d22\u6c14\u6ce1"),
-      msg("settings_other_selectionSearchToggleDesc", "\u9009\u4e2d\u6587\u5b57\u540e\u81ea\u52a8\u5f39\u51fa\u641c\u7d22\u5feb\u6377\u6c14\u6ce1\u3002")
+      msg("settings_other_selectionSearchToggleDesc", "\u9009\u4e2d\u6587\u5b57\u540e\u81ea\u52a8\u5f39\u51fa\u641c\u7d22\u5feb\u6377\u6c14\u6ce1\u3002"),
+      undefined,
+      { defaultValue: false }
     )
   );
   return card;
@@ -249,14 +251,14 @@ function createHomeDisplayCard() {
   const list = card.querySelector(".other-settings-list");
   [
     {
-      key: "showHistory",
-      title: msg("settings_other_showHistoryTitle", "\u663e\u793a\u641c\u7d22\u5386\u53f2"),
-      desc: msg("settings_other_showHistoryDesc", "\u5173\u95ed\u540e\u9996\u9875\u5386\u53f2\u533a\u57df\u4e0d\u518d\u663e\u793a\u3002")
-    },
-    {
       key: "showPromptButton",
       title: msg("settings_other_showPromptTitle", "\u663e\u793a\u63d0\u793a\u8bcd\u6309\u9215"),
       desc: msg("settings_other_showPromptDesc", "\u5173\u95ed\u540e\u8f93\u5165\u6846\u4e0b\u65b9\u7684\u63d0\u793a\u8bcd\u5165\u53e3\u5c06\u9690\u85cf\u3002")
+    },
+    {
+      key: "showHistory",
+      title: msg("settings_other_showHistoryTitle", "\u663e\u793a\u641c\u7d22\u5386\u53f2"),
+      desc: msg("settings_other_showHistoryDesc", "\u5173\u95ed\u540e\u9996\u9875\u5386\u53f2\u533a\u57df\u4e0d\u518d\u663e\u793a\u3002")
     }
   ].forEach((item) => {
     list?.appendChild(createOtherSettingToggle(item.key, item.title, item.desc));

@@ -19,3 +19,4 @@ build/
 # Release packages
 *.zip
 qshot-*/
+make-zip.cjs

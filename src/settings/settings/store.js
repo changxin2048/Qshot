@@ -114,6 +114,8 @@ export function createNormalizedUiPrefs(input) {
     showPromptButton: source.showPromptButton !== false,
     prewarmEnabled: source.prewarmEnabled !== false,
     overlayShortcutEnabled: source.overlayShortcutEnabled !== false,
+    contextMenuEnabled: source.contextMenuEnabled !== false,
+    selectionSearchEnabled: source.selectionSearchEnabled === true,
     diagnosticLogsEnabled: source.diagnosticLogsEnabled === true,
     darkMode: source.darkMode === "dark" || source.darkMode === "light" ? source.darkMode
              : source.darkMode === true ? "dark" : "auto",
