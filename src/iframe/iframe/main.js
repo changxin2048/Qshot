@@ -38,6 +38,28 @@ import {
 } from "./add-site.js";
 import { showExportModal } from "./export.js";
 import { bindFileUploadEvents } from "./file-upload.js";
+import { UI_PREFS_STORAGE_KEY } from "../../shared/storage-keys.js";
+
+let _darkModeMediaListener = null;
+
+function applyDarkModeToDoc(mode) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (_darkModeMediaListener) {
+    mq.removeEventListener("change", _darkModeMediaListener);
+    _darkModeMediaListener = null;
+  }
+  if (mode === "dark") {
+    document.documentElement.dataset.theme = "dark";
+  } else if (mode === "light") {
+    document.documentElement.dataset.theme = "";
+  } else {
+    document.documentElement.dataset.theme = mq.matches ? "dark" : "";
+    _darkModeMediaListener = (e) => {
+      document.documentElement.dataset.theme = e.matches ? "dark" : "";
+    };
+    mq.addEventListener("change", _darkModeMediaListener);
+  }
+}
 
 export function initComparePage() {
   const { applyDomI18n } = window.__QSHOT_I18N__ || {};
@@ -45,10 +67,21 @@ export function initComparePage() {
 
   document.addEventListener("DOMContentLoaded", start);
   window.addEventListener("message", handleFrameMessage);
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[UI_PREFS_STORAGE_KEY]) return;
+    const uiPrefs = changes[UI_PREFS_STORAGE_KEY].newValue || {};
+    applyDarkModeToDoc(uiPrefs.darkMode);
+  });
 }
 
 async function start() {
   try {
+    const prefsStored = await chrome.storage.local.get([UI_PREFS_STORAGE_KEY]);
+    const uiPrefs = prefsStored[UI_PREFS_STORAGE_KEY] || {};
+    const lm = uiPrefs.localeMode;
+    window.__QSHOT_I18N__?.setLocaleMode?.(lm === "zh" || lm === "en" ? lm : "auto");
+    applyDarkModeToDoc(uiPrefs.darkMode);
     state._applyDomI18n?.(document);
     cacheElements();
     bindEvents();

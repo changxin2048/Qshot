@@ -21,13 +21,13 @@ export const SITE_CATEGORIES = {
 };
 
 export const AI_SITE_GROUPS = [
-  { label: msg("settings_groups_aiDomestic", "国内"), siteIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso"] },
-  { label: msg("settings_groups_aiOverseas", "国外"), siteIds: ["gemini", "chatgpt", "claude", "grok"] }
+  { labelKey: "settings_groups_aiDomestic",     label: "国内", siteIds: ["deepseek", "doubao", "kimi", "yuanbao", "qwen", "metaso"] },
+  { labelKey: "settings_groups_aiOverseas",     label: "国外", siteIds: ["gemini", "chatgpt", "claude", "grok"] }
 ];
 
 export const SOCIAL_SITE_GROUPS = [
-  { label: msg("settings_groups_socialDomestic", "国内"), siteIds: ["xiaohongshu", "bilibili", "zhihu", "douyin"] },
-  { label: msg("settings_groups_socialOverseas", "海外"), siteIds: ["twitter", "youtube", "reddit", "tiktok"] }
+  { labelKey: "settings_groups_socialDomestic", label: "国内", siteIds: ["xiaohongshu", "bilibili", "zhihu", "douyin"] },
+  { labelKey: "settings_groups_socialOverseas", label: "海外", siteIds: ["twitter", "youtube", "reddit", "tiktok"] }
 ];
 
 export const SECTION_META = {
@@ -69,6 +69,13 @@ export const SECTION_META = {
     title: "",
     subtitle: ""
   },
+  misc: {
+    eyebrow: "",
+    titleKey: "settings_miscTitle",
+    title: "其他的设置",
+    subtitleKey: "settings_miscSubtitle",
+    subtitle: "首页显示项、搜索配置备份与界面语言。"
+  },
   about: {
     eyebrow: "",
     title: "",
@@ -92,6 +99,10 @@ export const state = {
   customSites: [],
   customFormState: createBlankCustomFormState(),
   activeSection: "groups",
+  quickAccessSiteIds: [],
+  openQuickSitesPicker: false,
+  quickPickerCategoryKey: null,
+  quickPickerCloseTimerId: null,
   openPickerGroupId: null,
   activePickerCategoryKey: null,
   pickerCloseTimerId: null,
@@ -109,6 +120,7 @@ export const state = {
     customSection: null,
     randomSection: null,
     otherSection: null,
+    miscSection: null,
     aboutSection: null,
     sectionEyebrow: null,
     sectionLogoWrap: null,
@@ -127,6 +139,7 @@ export const state = {
   renderCustomSection: () => {},
   renderRandomSection: () => {},
   renderOtherSection: () => {},
+  renderMiscSection: () => {},
   renderAboutSection: () => {},
 };
 

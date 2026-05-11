@@ -3,48 +3,245 @@ import {
   formatShortcut,
   isShortcutValid,
 } from "../../../shared/shortcut.js";
-import { state, msg } from "../state.js";
+import { QUICK_ACCESS_SITES_KEY } from "../../../shared/storage-keys.js";
+import { state, msg, SITE_CATEGORIES, AI_SITE_GROUPS, SOCIAL_SITE_GROUPS, PICKER_CLOSE_DELAY_MS } from "../state.js";
 import { escapeHtml } from "../utils.js";
 import {
   persistAll,
   createNormalizedGroups,
   createNormalizedCustomSites,
   mergeSites,
+  getCategorySites,
 } from "../store.js";
+import { attachChipDragGeneric } from "../drag.js";
+
+async function persistQuickAccessSites() {
+  await chrome.storage.local.set({ [QUICK_ACCESS_SITES_KEY]: state.quickAccessSiteIds });
+}
 
 export function renderOtherSection() {
   const { otherSection } = state.dom;
   otherSection.innerHTML = "";
 
-  const card = document.createElement("section");
-  card.className = "other-settings-card";
-  card.innerHTML = `
-    <div class="other-settings-intro">
-      <strong>${msg("settings_other_homeDisplayTitle", "首页显示项")}</strong>
-      <span>${msg("settings_other_homeDisplayDesc", "控制首页里哪些模块显示，哪些模块隐藏。")}</span>
-    </div>
-    <div class="other-settings-list"></div>
-  `;
+  otherSection.appendChild(createShortcutCard());
+}
 
-  const list = card.querySelector(".other-settings-list");
-  [
-    {
-      key: "showHistory",
-      title: msg("settings_other_showHistoryTitle", "显示历史搜索记录"),
-      desc: msg("settings_other_showHistoryDesc", "关闭后，首页下方的历史搜索区域将不再显示。")
-    },
-    {
-      key: "showPromptButton",
-      title: msg("settings_other_showPromptTitle", "显示提示词按钮"),
-      desc: msg("settings_other_showPromptDesc", "关闭后，输入框下方的提示词入口将隐藏。")
-    },
-  ].forEach((item) => {
-    list?.appendChild(createOtherSettingToggle(item.key, item.title, item.desc));
+function createQuickSitesCard() {
+  const MAX = 9;
+  const card = document.createElement("div");
+  card.className = "quick-sites-card";
+
+  const intro = document.createElement("div");
+  intro.className = "other-settings-intro";
+  intro.style.cssText = "";
+  intro.innerHTML = `
+    <strong>${msg("settings_other_quickSitesTitle", "三击空格快捷站点")}</strong>
+    <span>${msg("settings_other_quickSitesDesc", "在搜索浮层输入框中三击空格，快速跳转到以下站点（最多 9 个）。")}</span>
+  `;
+  card.appendChild(intro);
+
+  const chipList = document.createElement("div");
+  chipList.className = "site-chip-list";
+  chipList.style.marginTop = "4px";
+
+  function renderChips() {
+    chipList.innerHTML = "";
+    const selectedSites = state.quickAccessSiteIds
+      .map((id) => state.sites.find((s) => s.id === id))
+      .filter(Boolean);
+
+    selectedSites.forEach((site) => {
+      const chip = document.createElement("div");
+      chip.className = "site-chip selected-chip";
+      chip.dataset.siteId = site.id;
+      chip.innerHTML = `<span class="site-chip-label">${escapeHtml(site.name)}</span><button class="chip-remove-btn" type="button" aria-label="${escapeHtml(site.name)} 删除">×</button>`;
+      chip.querySelector(".chip-remove-btn").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        state.quickAccessSiteIds = state.quickAccessSiteIds.filter((id) => id !== site.id);
+        await persistQuickAccessSites();
+        renderChips();
+      });
+      chipList.appendChild(chip);
+    });
+
+    if (selectedSites.length < MAX) {
+      const addWrap = document.createElement("div");
+      addWrap.className = "inline-add-wrap quick-sites-add-wrap";
+
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "inline-add-btn";
+      addBtn.textContent = msg("common_add", "新增");
+      addBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        clearQuickPickerTimer();
+        if (state.openQuickSitesPicker) {
+          state.openQuickSitesPicker = false;
+          state.quickPickerCategoryKey = null;
+        } else {
+          state.openQuickSitesPicker = true;
+          if (!state.quickPickerCategoryKey || !SITE_CATEGORIES[state.quickPickerCategoryKey]) {
+            state.quickPickerCategoryKey = Object.keys(SITE_CATEGORIES)[0] || null;
+          }
+        }
+        renderChips();
+      });
+      addWrap.appendChild(addBtn);
+
+      if (state.openQuickSitesPicker) {
+        addWrap.appendChild(createQuickPicker(renderChips));
+      }
+
+      chipList.appendChild(addWrap);
+    }
+  }
+
+  renderChips();
+  attachChipDragGeneric(chipList, async (newIds) => {
+    state.quickAccessSiteIds = newIds;
+    await persistQuickAccessSites();
+    renderChips();
+  });
+  card.appendChild(chipList);
+  return card;
+}
+
+function clearQuickPickerTimer() {
+  if (state.quickPickerCloseTimerId) {
+    clearTimeout(state.quickPickerCloseTimerId);
+    state.quickPickerCloseTimerId = null;
+  }
+}
+
+function scheduleQuickPickerClose(renderFn) {
+  clearQuickPickerTimer();
+  state.quickPickerCloseTimerId = setTimeout(() => {
+    state.openQuickSitesPicker = false;
+    state.quickPickerCategoryKey = null;
+    renderFn();
+  }, PICKER_CLOSE_DELAY_MS);
+}
+
+function setQuickPickerCategory(key, renderFn) {
+  if (state.quickPickerCategoryKey === key) return;
+  state.quickPickerCategoryKey = key;
+  renderFn();
+}
+
+function createQuickPicker(renderFn) {
+  const MAX = 9;
+  const panel = document.createElement("div");
+  panel.className = "hover-picker-panel is-open";
+  panel.addEventListener("click", (e) => e.stopPropagation());
+  panel.addEventListener("mouseenter", clearQuickPickerTimer);
+  panel.addEventListener("mouseleave", () => scheduleQuickPickerClose(renderFn));
+
+  Object.entries(SITE_CATEGORIES).forEach(([key, category]) => {
+    const row = document.createElement("div");
+    row.className = "hover-picker-row";
+    const isActive = state.quickPickerCategoryKey === key;
+    if (isActive) row.classList.add("is-active");
+
+    const entry = document.createElement("button");
+    entry.className = "hover-picker-entry";
+    entry.type = "button";
+    entry.innerHTML = `<span>${escapeHtml(category.label)}</span><span class="hover-picker-arrow">›</span>`;
+    entry.addEventListener("mouseenter", () => {
+      clearQuickPickerTimer();
+      setQuickPickerCategory(key, renderFn);
+    });
+    entry.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearQuickPickerTimer();
+      setQuickPickerCategory(key, renderFn);
+    });
+    row.appendChild(entry);
+
+    const submenu = document.createElement("div");
+    submenu.className = `hover-picker-submenu${isActive ? " is-open" : ""}`;
+    submenu.addEventListener("mouseenter", clearQuickPickerTimer);
+    submenu.addEventListener("mouseleave", () => scheduleQuickPickerClose(renderFn));
+
+    const categorySites = getCategorySites(key);
+
+    if (key === "custom") {
+      if (!categorySites.length) {
+        const empty = document.createElement("div");
+        empty.className = "hover-picker-empty";
+        empty.innerHTML = msg("settings_groups_customEmpty", `还没有自定义站点<br/><span class="hover-picker-empty-hint">前往左侧「自定义搜索」添加</span>`);
+        submenu.appendChild(empty);
+      } else {
+        categorySites.forEach((site) => submenu.appendChild(createQuickPickerOption(site, renderFn, MAX)));
+      }
+    } else if (key === "ai") {
+      submenu.classList.add("hover-picker-submenu--ai");
+      const columnsWrap = document.createElement("div");
+      columnsWrap.className = "hover-picker-ai-columns";
+      AI_SITE_GROUPS.forEach((grp) => {
+        const groupSites = grp.siteIds.map((id) => categorySites.find((s) => s.id === id)).filter(Boolean);
+        if (!groupSites.length) return;
+        const col = document.createElement("div");
+        col.className = "hover-picker-ai-col";
+        const colTitle = document.createElement("div");
+        colTitle.className = "hover-picker-site-group-title";
+        colTitle.textContent = msg(grp.labelKey, grp.label);
+        col.appendChild(colTitle);
+        groupSites.forEach((site) => col.appendChild(createQuickPickerOption(site, renderFn, MAX)));
+        columnsWrap.appendChild(col);
+      });
+      submenu.appendChild(columnsWrap);
+    } else {
+      submenu.classList.add("hover-picker-submenu--ai");
+      const columnsWrap = document.createElement("div");
+      columnsWrap.className = "hover-picker-ai-columns";
+      SOCIAL_SITE_GROUPS.forEach((grp) => {
+        const groupSites = grp.siteIds.map((id) => categorySites.find((s) => s.id === id)).filter(Boolean);
+        if (!groupSites.length) return;
+        const col = document.createElement("div");
+        col.className = "hover-picker-ai-col";
+        const colTitle = document.createElement("div");
+        colTitle.className = "hover-picker-site-group-title";
+        colTitle.textContent = msg(grp.labelKey, grp.label);
+        col.appendChild(colTitle);
+        groupSites.forEach((site) => col.appendChild(createQuickPickerOption(site, renderFn, MAX)));
+        columnsWrap.appendChild(col);
+      });
+      submenu.appendChild(columnsWrap);
+    }
+
+    row.appendChild(submenu);
+    panel.appendChild(row);
   });
 
-  otherSection.appendChild(card);
-  otherSection.appendChild(createShortcutCard());
-  otherSection.appendChild(createSearchConfigIoCard());
+  return panel;
+}
+
+function createQuickPickerOption(site, renderFn, max) {
+  const label = document.createElement("label");
+  label.className = "hover-picker-option";
+  const isChecked = state.quickAccessSiteIds.includes(site.id);
+  const atMax = state.quickAccessSiteIds.length >= max;
+  const disabled = !isChecked && atMax;
+  label.innerHTML = `
+    <span class="hover-picker-option-text">${escapeHtml(site.name)}</span>
+    <input type="checkbox" ${isChecked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+  `;
+  if (disabled) label.style.opacity = "0.45";
+  const checkbox = label.querySelector("input");
+  checkbox.addEventListener("click", (e) => e.stopPropagation());
+  checkbox.addEventListener("change", async () => {
+    clearQuickPickerTimer();
+    if (checkbox.checked) {
+      if (state.quickAccessSiteIds.length < max) {
+        state.quickAccessSiteIds = [...state.quickAccessSiteIds, site.id];
+      }
+    } else {
+      state.quickAccessSiteIds = state.quickAccessSiteIds.filter((id) => id !== site.id);
+    }
+    await persistQuickAccessSites();
+    renderFn();
+  });
+  return label;
 }
 
 export function createOtherSettingToggle(key, title, desc, tip, options = {}) {
@@ -71,6 +268,8 @@ export function createOtherSettingToggle(key, title, desc, tip, options = {}) {
     await persistAll();
     if (state.activeSection === "random") {
       state.renderRandomSection();
+    } else if (state.activeSection === "misc") {
+      state.renderMiscSection();
     } else {
       renderOtherSection();
     }
@@ -89,6 +288,7 @@ function getOtherSettingValue(key, defaultValue = true) {
 function createShortcutCard() {
   const card = document.createElement("section");
   card.className = "other-settings-card";
+  card.style.cssText = "border: none; background: transparent; box-shadow: none;";
   card.innerHTML = `
     <div class="other-settings-intro">
       <strong>${msg("settings_other_globalShortcutTitle", "全局搜索快捷键")}</strong>
@@ -96,6 +296,7 @@ function createShortcutCard() {
     </div>
     <div class="other-settings-list"></div>
   `;
+  card.insertBefore(createQuickSitesCard(), card.querySelector(".other-settings-intro").nextSibling);
 
   const list = card.querySelector(".other-settings-list");
   if (list) {
@@ -116,7 +317,7 @@ function createShortcutCard() {
 
 // ── 搜索配置 导入 / 导出 ──────────────────────────────────────────────────────
 
-function createSearchConfigIoCard() {
+export function createSearchConfigIoCard() {
   const card = document.createElement("section");
   card.className = "other-settings-card";
   card.innerHTML = `
@@ -217,7 +418,11 @@ async function handleSearchConfigImportFile(event) {
   }
 
   await persistAll();
-  renderOtherSection();
+  if (state.activeSection === "misc") {
+    state.renderMiscSection();
+  } else {
+    renderOtherSection();
+  }
 
   if (state.activeSection === "groups") {
     state.renderGroupsSection();

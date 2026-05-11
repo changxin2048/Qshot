@@ -180,10 +180,32 @@
     settings_about_site: "Website",
     settings_about_source: "Source",
     settings_about_authorAria: "Author accounts",
-    settings_about_authorLabel: "Author: "
+    settings_about_authorLabel: "Author: ",
+    settings_about_miscTitle: "Other preferences",
+    settings_about_miscDesc: "Home screen modules, search config backup, and display language.",
+    settings_about_localeTitle: "Interface language",
+    settings_about_localeDesc: "Follow the browser, or lock the extension to Chinese or English.",
+    settings_about_localeAuto: "Match browser",
+    settings_about_localeZh: "简体中文",
+    settings_about_localeEn: "English",
+    settings_about_localeConfirm: "Apply",
+    settings_miscTitle: "Other settings",
+    settings_miscDesc: "Display & language",
+    settings_miscSubtitle: "Home display, search config backup and interface language."
   };
 
-  function getUiLanguage() {
+  /** null = follow browser (default); "zh" / "en" = manual UI language for in-bundle strings. */
+  let localeModeOverride = null;
+
+  function setLocaleMode(mode) {
+    if (mode === "zh" || mode === "en") {
+      localeModeOverride = mode;
+    } else {
+      localeModeOverride = null;
+    }
+  }
+
+  function resolveBrowserUiLanguage() {
     try {
       const chromeLang = (chrome?.i18n?.getUILanguage?.() || "").toLowerCase();
       if (chromeLang) return chromeLang;
@@ -194,12 +216,21 @@
     }
   }
 
+  function getUiLanguage() {
+    if (localeModeOverride === "zh") return "zh-cn";
+    if (localeModeOverride === "en") return "en";
+    return resolveBrowserUiLanguage();
+  }
+
   function t(key, substitutions) {
-    try {
-      const msg = chrome?.i18n?.getMessage?.(key, substitutions);
-      if (msg) return msg;
-    } catch (_e) {
-      // ignore
+    const useChromeI18n = localeModeOverride === null;
+    if (useChromeI18n) {
+      try {
+        const chromeMsg = chrome?.i18n?.getMessage?.(key, substitutions);
+        if (chromeMsg) return chromeMsg;
+      } catch (_e) {
+        // ignore
+      }
     }
     if (!getUiLanguage().startsWith("zh")) {
       return EN_MESSAGES[key] || "";
@@ -217,10 +248,13 @@
     nodes.forEach((el) => {
       const key = el.getAttribute("data-i18n");
       if (key) {
-        const msg = t(key);
-        if (msg) {
-          el.textContent = msg;
+        // Snapshot the original (Chinese) text the very first time this element
+        // is processed so we can restore it when switching back to Chinese.
+        if (!el.hasAttribute("data-i18n-orig")) {
+          el.setAttribute("data-i18n-orig", el.textContent);
         }
+        const translated = t(key);
+        el.textContent = translated || el.getAttribute("data-i18n-orig") || "";
       }
 
       const attrSpec = el.getAttribute("data-i18n-attr");
@@ -233,14 +267,17 @@
           .forEach((pair) => {
             const [attr, aKey] = pair.split(":").map((s) => s.trim());
             if (!attr || !aKey) return;
-            const msg = t(aKey);
-            if (!msg) return;
-            el.setAttribute(attr, msg);
+            const origAttrKey = "data-i18n-orig-" + attr;
+            if (!el.hasAttribute(origAttrKey)) {
+              el.setAttribute(origAttrKey, el.getAttribute(attr) || "");
+            }
+            const translated = t(aKey);
+            el.setAttribute(attr, translated || el.getAttribute(origAttrKey) || "");
           });
       }
     });
   }
 
-  window.__QSHOT_I18N__ = { t, applyDomI18n, getUiLanguage };
+  window.__QSHOT_I18N__ = { t, applyDomI18n, getUiLanguage, setLocaleMode };
 })();
 

@@ -7,6 +7,7 @@ import {
   renderSiteNav,
   renderCardNavStrip,
   updateScrollEdgeBtns,
+  onCardAdded,
 } from "./layout.js";
 import { createSiteCard } from "./cards-render.js";
 
@@ -127,6 +128,7 @@ export function addSiteCardToPage(site) {
     card.classList.add("iframe-card-wide-media");
   }
   elements.iframesContainer.appendChild(card);
+  onCardAdded(card);
 
   if (state.layoutMode === "sidebar") {
     state.activeSidebarSiteId = site.id;

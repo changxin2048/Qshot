@@ -1,4 +1,4 @@
-import { UI_PREFS_STORAGE_KEY, CUSTOM_SITES_STORAGE_KEY, SEARCH_GROUPS_STORAGE_KEY, SEARCH_HISTORY_STORAGE_KEY, PROMPT_GROUPS_STORAGE_KEY } from "../../shared/storage-keys.js";
+import { UI_PREFS_STORAGE_KEY, CUSTOM_SITES_STORAGE_KEY, SEARCH_GROUPS_STORAGE_KEY, SEARCH_HISTORY_STORAGE_KEY, PROMPT_GROUPS_STORAGE_KEY, QUICK_ACCESS_SITES_KEY } from "../../shared/storage-keys.js";
 import {
   state,
   t,
@@ -7,6 +7,7 @@ import {
   refreshHistory,
   refreshPromptGroups,
   refreshUiPrefs,
+  refreshQuickAccessSites,
 } from "./state.js";
 import {
   OVERLAY_STYLES,
@@ -21,6 +22,37 @@ import {
 import { renderGroupsIfOpen, hideGroupTooltip, runDefaultSearch, enterGroupPickMode, exitGroupPickMode, runGroup, enterSitePickMode, exitSitePickMode, getPickableSites, openSiteWithQuery } from "./groups-panel.js";
 import { renderHistoryIfOpen } from "./history-panel.js";
 import { renderPromptPickerIfOpen, fillRandomQuestion } from "./prompts-panel.js";
+
+let _darkModeMediaListener = null;
+
+function resolveIsDark(mode) {
+  if (mode === "dark") return true;
+  if (mode === "light") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function applyOverlayDarkMode(mode) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (_darkModeMediaListener) {
+    mq.removeEventListener("change", _darkModeMediaListener);
+    _darkModeMediaListener = null;
+  }
+  if (!state.shadowRoot) return;
+  const panel = state.shadowRoot.querySelector(".panel");
+  const logo  = state.shadowRoot.querySelector(".title-logo");
+  const isDark = resolveIsDark(mode);
+  panel?.classList.toggle("dark", isDark);
+  logo?.classList.toggle("dark", isDark);
+  if (mode === "auto") {
+    _darkModeMediaListener = (e) => {
+      const p = state.shadowRoot?.querySelector(".panel");
+      const l = state.shadowRoot?.querySelector(".title-logo");
+      p?.classList.toggle("dark", e.matches);
+      l?.classList.toggle("dark", e.matches);
+    };
+    mq.addEventListener("change", _darkModeMediaListener);
+  }
+}
 
 export function initQshotOverlay() {
   if (window.__QSHOT_OVERLAY_INSTALLED__) return;
@@ -117,6 +149,9 @@ export function initQshotOverlay() {
     if (changes[PROMPT_GROUPS_STORAGE_KEY]) {
       refreshPromptGroups().then(renderPromptPickerIfOpen);
     }
+    if (changes[QUICK_ACCESS_SITES_KEY]) {
+      refreshQuickAccessSites();
+    }
   });
 
   function handleGlobalKeydown(event) {
@@ -158,6 +193,7 @@ export function initQshotOverlay() {
       refreshHistory(),
       refreshPromptGroups(),
       refreshUiPrefs(),
+      refreshQuickAccessSites(),
     ]);
     if (!state.activePromptGroupId) {
       state.activePromptGroupId = state.promptGroups[0]?.id || null;
@@ -228,7 +264,7 @@ function mountOverlay() {
   });
 
   const panel = document.createElement("div");
-  panel.className = "panel";
+  panel.className = "panel" + (resolveIsDark(state.uiPrefs.darkMode) ? " dark" : "");
   panel.addEventListener("mousedown", (event) => {
     // Clicking anywhere on the panel that isn't the prompt area collapses the picker.
     const target = event.target;
@@ -245,7 +281,7 @@ function mountOverlay() {
   const header = document.createElement("header");
   header.className = "header";
   const logo = document.createElement("img");
-  logo.className = "title-logo";
+  logo.className = "title-logo" + (resolveIsDark(state.uiPrefs.darkMode) ? " dark" : "");
   logo.alt = "Qshot";
   logo.src = LOGO_URL;
   logo.addEventListener("error", () => {
@@ -366,6 +402,9 @@ function mountOverlay() {
   state.shadowRoot.appendChild(backdrop);
 
   document.documentElement.appendChild(state.hostEl);
+
+  // 初始注册 auto 模式的媒体查询监听
+  applyOverlayDarkMode(state.uiPrefs.darkMode);
 
   let spaceCount = 0;
   let lastSpaceTime = 0;
@@ -501,6 +540,7 @@ function mountOverlay() {
 
 function applyUiPrefs() {
   if (!state.shadowRoot) return;
+  applyOverlayDarkMode(state.uiPrefs.darkMode);
   const diceBtn = state.shadowRoot.querySelector(".icon-btn.dice");
   const sparkleBtn = state.shadowRoot.querySelector(".icon-btn.sparkle");
   const actionsRow = state.shadowRoot.querySelector(".actions-row");

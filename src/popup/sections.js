@@ -246,7 +246,7 @@ export async function runDefaultSearch() {
   await runGroup(state.groups[0]);
 }
 
-function runGroup(group) {
+export function runGroup(group) {
   const { queryInput } = state.dom;
   const query = queryInput ? queryInput.value.trim() : "";
   chrome.runtime

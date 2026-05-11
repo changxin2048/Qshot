@@ -31,7 +31,19 @@ export async function saveSearchHistory(query, sites) {
       state.historyEntryIdBySiteId.set(site.id, entry.id);
     }
   });
-  state.searchHistory = [entry, ...state.searchHistory].slice(0, 50);
+
+  // 多窗口并发写入保护：先从存储读取最新列表，再把本窗口的新条目
+  // 插入到最前面，避免两个窗口各持旧快照互相覆盖导致记录丢失。
+  try {
+    const stored = await chrome.storage.local.get([STORAGE_KEYS.searchHistory]);
+    const latestHistory = Array.isArray(stored[STORAGE_KEYS.searchHistory])
+      ? stored[STORAGE_KEYS.searchHistory]
+      : state.searchHistory;
+    state.searchHistory = [entry, ...latestHistory.filter((h) => h?.id !== entry.id)].slice(0, 50);
+  } catch (_err) {
+    state.searchHistory = [entry, ...state.searchHistory].slice(0, 50);
+  }
+
   await savePreferences();
   renderHistoryList();
   return entry.id;
@@ -220,6 +232,16 @@ export function applyHistoryRestoreFromUrl() {
       state.historyEntryIdBySiteId.set(site.id, entry.id);
     }
   });
+
+  // 复原历史记录时，将当前窗口的 lastSearchQuery 锁定为该条目的查询词，
+  // 防止导出时回退到 searchHistory[0]（跨窗口共享存储）而错误地把
+  // 另一个窗口的最新搜索词当成本窗口的导出标题。
+  if (entry.query) {
+    state.lastSearchQuery = entry.query;
+    state.lastSearchTime = entry.createdAt
+      ? new Date(entry.createdAt).toLocaleString()
+      : new Date().toLocaleString();
+  }
 
   setQueryInputValue("", { focus: false });
   clearRestoreHistoryParamFromUrl();

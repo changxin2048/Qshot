@@ -19,6 +19,147 @@
   gap: 0;
 }
 
+.about-misc-subintro {
+  margin-top: 18px;
+  padding-top: 4px;
+}
+
+.about-locale-row {
+  margin-top: 14px;
+}
+
+/* ── 其他设置：深色模式 + 界面语言 并排一行 ─────────────────────────────── */
+
+.misc-top-row {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.misc-top-row .misc-inline-card {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 20px;
+  gap: 10px;
+}
+
+.misc-top-row .misc-inline-card .other-settings-intro strong {
+  font-size: 15px;
+}
+
+.misc-top-row .misc-inline-card .about-locale-row {
+  margin-top: 0;
+}
+
+@media (max-width: 680px) {
+  .misc-top-row {
+    flex-direction: column;
+  }
+}
+
+/* ── custom locale dropdown ─────────────────────────────────────────────── */
+
+.locale-dropdown {
+  position: relative;
+  display: inline-block;
+  min-width: 200px;
+}
+
+.locale-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 42px;
+  padding: 0 14px 0 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111111;
+  font-size: var(--fs-md, 14px);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  user-select: none;
+}
+
+.locale-trigger:hover {
+  border-color: #c0c0c0;
+}
+
+.locale-trigger.is-open,
+.locale-trigger:focus-visible {
+  outline: none;
+  border-color: #aaaaaa;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+.locale-trigger-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.locale-trigger-arrow {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: #888888;
+  transition: transform 200ms ease;
+}
+
+.locale-trigger.is-open .locale-trigger-arrow {
+  transform: rotate(180deg);
+}
+
+.locale-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 120;
+  padding: 6px;
+  background: #ffffff;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+  flex-direction: column;
+  gap: 2px;
+}
+
+.locale-menu.is-open {
+  display: flex;
+}
+
+.locale-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #222222;
+  font-size: var(--fs-md, 14px);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.locale-option:hover {
+  background: #f2f2f2;
+}
+
+.locale-option.is-active {
+  background: #f0f0f0;
+  font-weight: 600;
+  color: #111111;
+}
+
 .about-plugin-privacy p {
   margin: 0;
   font-size: var(--fs-md);

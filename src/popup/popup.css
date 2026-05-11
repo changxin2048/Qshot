@@ -445,6 +445,70 @@ svg {
   border-color: #111111;
 }
 
+@keyframes popup-pick-wiggle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-2deg); }
+  75% { transform: translateY(-2px) rotate(2deg); }
+}
+@keyframes popup-flip-out {
+  from { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+  to   { transform: perspective(400px) rotateY(90deg); opacity: 0; }
+}
+@keyframes popup-flip-in {
+  from { transform: perspective(400px) rotateY(-90deg); opacity: 0; }
+  to   { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+}
+.popup-groups.pop-flip-out { animation: popup-flip-out 0.18s ease-in forwards; pointer-events: none; }
+.popup-groups.pop-flip-in  { animation: popup-flip-in  0.18s ease-out forwards; }
+
+.popup-group-btn[data-pick-num] {
+  position: relative;
+  overflow: visible;
+  animation: popup-pick-wiggle 0.5s ease-in-out infinite;
+  border-color: #111;
+}
+.popup-group-btn[data-pick-num]::before,
+.popup-site-pick-btn[data-pick-num]::before {
+  content: attr(data-pick-num);
+  position: absolute;
+  top: -9px;
+  left: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  border-radius: 9px;
+  background: #111;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.popup-site-pick-btn {
+  min-width: 76px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(0,0,0,0.4);
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font-size: 13px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+.popup-site-pick-btn:hover { background: #111; color: #fff; border-color: #111; }
+.popup-site-pick-btn[data-pick-num] {
+  animation: popup-pick-wiggle 0.5s ease-in-out infinite;
+  overflow: visible;
+}
+
 .popup-group-name {
   font-size: 13px;
   line-height: 1.2;
@@ -831,3 +895,251 @@ button.ppv-close:hover {
 .qshot-preview-body::-webkit-scrollbar { width: 5px; }
 .qshot-preview-body::-webkit-scrollbar-track { background: transparent; }
 .qshot-preview-body::-webkit-scrollbar-thumb { background: #dcdcdc; border-radius: 3px; }
+
+/* ============================================================
+   Dark Mode — html[data-theme="dark"]
+   ============================================================ */
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .popup-shell {
+  background: #18181b;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .popup-panel {
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-title-logo {
+  filter: brightness(0) invert(1);
+}
+
+/* ── 搜索框 ── */
+html[data-theme="dark"] .search-composer {
+  border-color: #3f3f46;
+  background: #27272a;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .popup-query-input {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-query-input::placeholder {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .composer-icon-btn {
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .composer-send-btn {
+  color: #52525b;
+}
+
+html[data-theme="dark"] .composer-send-btn.is-active {
+  color: #f4f4f5;
+}
+
+/* ── 搜索组按钮 ── */
+html[data-theme="dark"] .popup-group-btn {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-group-btn:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-site-pick-btn {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-site-pick-btn:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #f4f4f5;
+}
+
+/* ── 历史记录 ── */
+html[data-theme="dark"] .section-divider::before,
+html[data-theme="dark"] .section-divider::after {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+html[data-theme="dark"] .section-divider-label {
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .popup-history-empty {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .popup-history-item {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #2a2a2e;
+}
+
+html[data-theme="dark"] .popup-history-item:hover {
+  background: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] .popup-history-query {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-history-meta {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .popup-history-delete-btn {
+  color: #71717a;
+}
+
+/* ── 底部设置按钮 ── */
+html[data-theme="dark"] .settings-entry-btn {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+/* ── 提示词选择器 ── */
+html[data-theme="dark"] .popup-prompt-picker {
+  border-color: #3f3f46;
+  background: #27272a;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .popup-prompt-groups {
+  background: #2a2a2e;
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .popup-prompt-group-item {
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .popup-prompt-group-item.is-active,
+html[data-theme="dark"] .popup-prompt-group-item:hover {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+html[data-theme="dark"] .popup-prompt-item {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-prompt-item:hover {
+  background: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .popup-prompt-item-label {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .popup-prompt-icon-btn {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .popup-prompt-icon-btn:hover {
+  color: #d4d4d8;
+  background: #3f3f46;
+}
+
+html[data-theme="dark"] .popup-prompt-picker-empty {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .popup-prompt-picker-footer {
+  border-top-color: rgba(255, 255, 255, 0.07);
+  background: #2a2a2e;
+}
+
+html[data-theme="dark"] .popup-prompt-picker-settings-btn {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .popup-prompt-picker-settings-btn:hover {
+  color: #d4d4d8;
+}
+
+/* ── 搜索组 tooltip ── */
+html[data-theme="dark"] .group-tooltip {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #f4f4f5;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .group-tooltip-item {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .group-tooltip-item:hover {
+  background: #f4f4f5;
+  border-color: #f4f4f5;
+  color: #18181b;
+}
+
+/* ── 预览卡片 ── */
+html[data-theme="dark"] .qshot-preview-card {
+  background: #27272a;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .qshot-preview-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .qshot-preview-title {
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .qshot-preview-body {
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .qshot-preview-body::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+html[data-theme="dark"] .qshot-preview-btn--copy {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+html[data-theme="dark"] .qshot-preview-btn--copy:hover {
+  background: #d4d4d8;
+}
+
+html[data-theme="dark"] .qshot-preview-btn--edit {
+  border-color: #3f3f46;
+  background: #3f3f46;
+  color: #d4d4d8;
+}
+
+html[data-theme="dark"] .qshot-preview-btn--edit:hover {
+  background: #52525b;
+  border-color: #71717a;
+}
+
+html[data-theme="dark"] .qshot-preview-close-btn {
+  color: #71717a;
+}
+
+html[data-theme="dark"] .qshot-preview-close-btn:hover {
+  background: #3f3f46;
+  color: #f4f4f5;
+}

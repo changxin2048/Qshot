@@ -4,6 +4,7 @@ import {
   PROMPT_GROUPS_STORAGE_KEY,
   UI_PREFS_STORAGE_KEY,
   CUSTOM_SITES_STORAGE_KEY,
+  QUICK_ACCESS_SITES_KEY,
 } from "../../shared/storage-keys.js";
 import { normalizeShortcut } from "../../shared/shortcut.js";
 
@@ -16,6 +17,7 @@ export const state = {
   groups: [],
   allSites: [],
   customSites: [],
+  quickAccessSiteIds: [],
   historyEntries: [],
   promptGroups: [],
   uiPrefs: normalizeUiPrefs(),
@@ -49,6 +51,8 @@ export function normalizeUiPrefs(input) {
     prewarmEnabled: src.prewarmEnabled !== false,
     overlayShortcutEnabled: src.overlayShortcutEnabled !== false,
     overlayShortcut: normalizeShortcut(src.overlayShortcut),
+    darkMode: src.darkMode === "dark" || src.darkMode === "light" ? src.darkMode
+             : src.darkMode === true ? "dark" : "auto",
   };
 }
 
@@ -153,6 +157,17 @@ export async function refreshPromptGroups() {
     }
   } catch (_err) {
     state.promptGroups = [];
+  }
+}
+
+export async function refreshQuickAccessSites() {
+  try {
+    const stored = await chrome.storage.local.get([QUICK_ACCESS_SITES_KEY]);
+    state.quickAccessSiteIds = Array.isArray(stored[QUICK_ACCESS_SITES_KEY])
+      ? stored[QUICK_ACCESS_SITES_KEY].filter((id) => typeof id === "string")
+      : [];
+  } catch (_err) {
+    state.quickAccessSiteIds = [];
   }
 }
 

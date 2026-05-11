@@ -3,7 +3,21 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "Bash(gh repo *)",
-      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)"
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Read(//c/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/**)",
+      "Read(//c/Users/Administrator/Downloads/**)",
+      "Bash(grep -oP '.{0,200}\\(indexedDB|IndexedDB|idb\\).{0,200}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/background.js\")",
+      "Bash(grep -oP '.{0,200}\\(chrome\\\\.downloads|chrome\\\\.storage\\\\.local|browser\\\\.downloads\\).{0,200}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/background.js\")",
+      "Bash(grep -oP '.{0,150}\\(gemini\\\\.google\\\\.com|messages|conversation|chat|query|response|turn|__NEXT_DATA__|window\\\\.__data\\).{0,150}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oP '.{0,300}\\(gemini\\\\.google\\\\.com|\\\\.share\\\\b|conversation|chat-session|chat-turn|response-container|\\\\.messages?|model-response|user-query|__NEXT|__APP\\).{0,300}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oE '.{0,200}\\(chrome\\\\.downloads|downloads\\\\.download|downloadURL|filename|suggestedName|showSaveFilePicker|\\\\.download\\\\b\\).{0,200}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/background.js\")",
+      "Bash(grep -oE '.{0,200}\\(chrome\\\\.downloads|downloadURL|filename|suggestedName|showSaveFilePicker|triggerDownload|downloadFile\\).{0,200}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oE '.{0,150}\\(jspdf|pdfmake|html2pdf|html2canvas|jsPDF|pdfkit|canvg\\).{0,150}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/background.js\")",
+      "Bash(grep -oE '.{0,200}\\(querySelector|querySelectorAll|getElementById|getElementsByClassName|innerText|textContent|innerHTML|outerHTML|\\\\.map\\\\\\(|chat-turn|user-query|model-response|\\\\.share\\).{0,200}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oP '.{0,250}\\(\\\\.turn|\\\\.message|message-content|user-content|model-content|\\\\.chat-text|angular|ng-|data-test-id|data-testid|aria-label|conversation-turn|message-list|chat-history\\).{0,250}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oP '.{0,250}\\(response\\\\-|user\\\\-query|model\\\\-|gizmo|mat-selector|\\\\.turn\\\\-|query\\\\-text|response\\\\-text|chat\\\\-msg|thread|prompt\\\\-\\).{0,250}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")",
+      "Bash(grep -oP '.{0,300}\\(conversation_history|saveAllChats|saveHistory|autoSave|saveConversation|previousChat|chatHistory|storeChat|saveChat|persistChat\\).{0,300}' \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/background.js\")",
+      "Bash(grep -oP \"['\\\\\"][^'\\\\\"]{20,80}['\\\\\"]\" \"C:/Users/Administrator/Downloads/AI_对话导出器：Gemini_导出为_PDF、MD_等多种格式_3.7.1/content.js\")"
     ]
   }
 }

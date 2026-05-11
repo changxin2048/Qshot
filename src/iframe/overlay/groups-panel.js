@@ -190,7 +190,9 @@ export function exitGroupPickMode() {
 }
 
 export function getPickableSites() {
-  return state.customSites.filter((site) => normalizeSiteHomeUrl(site.url));
+  return state.quickAccessSiteIds
+    .map((id) => state.allSites.find((s) => s.id === id))
+    .filter((s) => s && normalizeSiteHomeUrl(s.url));
 }
 
 function flipGroups(callback) {

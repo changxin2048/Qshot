@@ -292,7 +292,7 @@ function createHoverPicker(group) {
 
         const colTitle = document.createElement("div");
         colTitle.className = "hover-picker-site-group-title";
-        colTitle.textContent = marketGroup.label;
+        colTitle.textContent = msg(marketGroup.labelKey, marketGroup.label);
         col.appendChild(colTitle);
 
         groupSites.forEach((site) => {
@@ -326,7 +326,7 @@ function createHoverPicker(group) {
 
         const colTitle = document.createElement("div");
         colTitle.className = "hover-picker-site-group-title";
-        colTitle.textContent = marketGroup.label;
+        colTitle.textContent = msg(marketGroup.labelKey, marketGroup.label);
         col.appendChild(colTitle);
 
         groupSites.forEach((site) => {

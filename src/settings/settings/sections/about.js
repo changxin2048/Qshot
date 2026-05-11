@@ -13,7 +13,7 @@ export function renderAboutSection() {
     <div class="about-plugin-privacy" role="note">
       <p><strong>${msg("settings_about_openSourceLabel", "开源且免费：")}</strong>${msg("settings_about_openSourceBody", "Qshot 是一个开源且免费插件，不会进行任何后端服务器运行。欢迎审查与贡献。")}</p>
       <p><strong>${msg("settings_about_zeroDataLabel", "零数据收集：")}</strong>${msg("settings_about_zeroDataBody", "Qshot 不会将您的搜索关键词、浏览记录或页面内容上传到开发者服务器。用于功能的配置数据仅保存在本地。")}</p>
-      <p><strong>${msg("settings_about_transparencyLabel", "交互透明性：")}</strong>${msg("settings_about_transparencyBody", "插件通过 iframe 或“新标签页模式”打开目标网站，您与网站的登录与交互均直接发生在浏览器与目标网站之间。")}</p>
+      <p><strong>${msg("settings_about_transparencyLabel", "交互透明性：")}</strong>${msg("settings_about_transparencyBody", "插件通过 iframe 或\u201c新标签页模式\u201d打开目标网站，您与网站的登录与交互均直接发生在浏览器与目标网站之间。")}</p>
     </div>
   `;
   aboutSection.appendChild(privacyCard);

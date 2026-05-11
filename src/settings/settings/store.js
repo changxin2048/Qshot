@@ -106,6 +106,8 @@ export function getDisplayPromptEntries(group) {
 
 export function createNormalizedUiPrefs(input) {
   const source = input && typeof input === "object" ? input : {};
+  const rawLocale = source.localeMode;
+  const localeMode = rawLocale === "zh" || rawLocale === "en" || rawLocale === "auto" ? rawLocale : "auto";
   return {
     showHistory: source.showHistory === true,
     showRandomButton: source.showRandomButton !== false,
@@ -113,7 +115,10 @@ export function createNormalizedUiPrefs(input) {
     prewarmEnabled: source.prewarmEnabled !== false,
     overlayShortcutEnabled: source.overlayShortcutEnabled !== false,
     diagnosticLogsEnabled: source.diagnosticLogsEnabled === true,
-    overlayShortcut: normalizeShortcut(source.overlayShortcut)
+    darkMode: source.darkMode === "dark" || source.darkMode === "light" ? source.darkMode
+             : source.darkMode === true ? "dark" : "auto",
+    overlayShortcut: normalizeShortcut(source.overlayShortcut),
+    localeMode
   };
 }
 

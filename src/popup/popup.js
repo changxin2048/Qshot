@@ -5,6 +5,7 @@ import {
   UI_PREFS_STORAGE_KEY,
   CUSTOM_SITES_STORAGE_KEY,
   RANDOM_QUESTIONS_STORAGE_KEY,
+  QUICK_ACCESS_SITES_KEY,
 } from "../shared/storage-keys.js";
 import {
   state,
@@ -22,6 +23,7 @@ import {
   togglePromptPicker,
   fillRandomQuestion,
   runDefaultSearch,
+  runGroup,
   invalidateRandomQuestionsCache,
 } from "./sections.js";
 
@@ -29,6 +31,27 @@ const { applyDomI18n } = window.__QSHOT_I18N__ || {};
 
 document.addEventListener("DOMContentLoaded", start);
 chrome.storage.onChanged.addListener(handleStorageChange);
+
+let _darkModeMediaListener = null;
+
+function applyDarkModeToDoc(mode) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (_darkModeMediaListener) {
+    mq.removeEventListener("change", _darkModeMediaListener);
+    _darkModeMediaListener = null;
+  }
+  if (mode === "dark") {
+    document.documentElement.dataset.theme = "dark";
+  } else if (mode === "light") {
+    document.documentElement.dataset.theme = "";
+  } else {
+    document.documentElement.dataset.theme = mq.matches ? "dark" : "";
+    _darkModeMediaListener = (e) => {
+      document.documentElement.dataset.theme = e.matches ? "dark" : "";
+    };
+    mq.addEventListener("change", _darkModeMediaListener);
+  }
+}
 
 async function start() {
   const dom = state.dom;
@@ -83,7 +106,165 @@ function bindEvents() {
     togglePromptPicker();
   });
 
+  let popupSpaceCount = 0;
+  let popupLastSpaceTime = 0;
+  let popupPickMode = null; // null | "group" | "site"
+
+  function popupExitPickMode() {
+    if (!popupPickMode) return;
+    popupPickMode = null;
+    popupSpaceCount = 0;
+    popupLastSpaceTime = 0;
+    const container = state.dom.groupsContainer;
+    if (!container) return;
+    container.style.paddingTop = "";
+    renderGroups();
+  }
+
+  function popupEnterGroupPickMode() {
+    popupPickMode = "group";
+    const container = state.dom.groupsContainer;
+    if (!container) return;
+    container.style.paddingTop = "12px";
+    const btns = container.querySelectorAll(".popup-group-btn");
+    btns.forEach((btn, i) => {
+      if (i < 9) {
+        btn.setAttribute("data-pick-num", String(i + 1));
+        btn.style.animationDelay = `${i * 0.06}s`;
+      }
+    });
+  }
+
+  async function popupEnterSitePickMode() {
+    const stored = await chrome.storage.local.get([QUICK_ACCESS_SITES_KEY]);
+    const siteIds = Array.isArray(stored[QUICK_ACCESS_SITES_KEY]) ? stored[QUICK_ACCESS_SITES_KEY] : [];
+    const sites = siteIds.map((id) => state.allSites.find((s) => s.id === id)).filter(Boolean);
+    popupPickMode = "site";
+    popupSites = sites;
+
+    const container = state.dom.groupsContainer;
+    if (!container) return;
+
+    container.style.paddingTop = "12px";
+    container.classList.add("pop-flip-out");
+    setTimeout(() => {
+      container.classList.remove("pop-flip-out");
+      container.innerHTML = "";
+      if (!sites.length) {
+        const empty = document.createElement("span");
+        empty.style.cssText = "font-size:12px;color:#888;padding:4px;";
+        empty.textContent = "暂无快捷站点";
+        container.appendChild(empty);
+      } else {
+        sites.forEach((site, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "popup-site-pick-btn";
+          btn.textContent = site.name || site.id;
+          if (i < 9) {
+            btn.setAttribute("data-pick-num", String(i + 1));
+            btn.style.animationDelay = `${i * 0.06}s`;
+          }
+          btn.addEventListener("click", async () => {
+            popupPickMode = null;
+            if (container) container.style.paddingTop = "";
+            await openSiteFromPopup(site);
+          });
+          container.appendChild(btn);
+        });
+      }
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        container.classList.add("pop-flip-in");
+        setTimeout(() => container.classList.remove("pop-flip-in"), 200);
+      }));
+    }, 180);
+  }
+
+  let popupSites = [];
+
+  async function openSiteFromPopup(site) {
+    const queryInput = state.dom.queryInput;
+    const query = queryInput instanceof HTMLTextAreaElement ? queryInput.value.trim() : "";
+    const raw = String(site?.url || "").trim();
+    if (!raw) return;
+    let url;
+    if (query && raw.includes("{query}")) {
+      url = raw.replace(/\{query\}/g, encodeURIComponent(query));
+    } else {
+      // Strip {query} parts to get homepage URL
+      let next = raw.replace(/([?&])[^=&]+=\{query\}/g, (_, sep) => sep === "?" ? "?" : "");
+      next = next.replace(/\?&/, "?").replace(/[?&]$/, "").replace(/\{query\}/g, "");
+      url = next;
+    }
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    try {
+      await chrome.tabs.create({ url, active: true });
+    } catch (_) {}
+    window.close();
+  }
+
   queryInput?.addEventListener("keydown", async (event) => {
+    // Site pick mode
+    if (popupPickMode === "site") {
+      if (event.key >= "1" && event.key <= "9" && !event.isComposing) {
+        event.preventDefault();
+        const site = popupSites[parseInt(event.key, 10) - 1];
+        popupPickMode = null;
+        if (site) await openSiteFromPopup(site);
+        return;
+      }
+      if (event.key === "Escape") { popupExitPickMode(); return; }
+      if (event.key !== " ") { popupExitPickMode(); popupSpaceCount = 0; popupLastSpaceTime = 0; }
+    }
+
+    // Group pick mode
+    if (popupPickMode === "group") {
+      if (event.key >= "1" && event.key <= "9" && !event.isComposing) {
+        event.preventDefault();
+        const group = state.groups[parseInt(event.key, 10) - 1];
+        popupExitPickMode();
+        if (group) runGroup(group);
+        return;
+      }
+      if (event.key === "Escape") { popupExitPickMode(); return; }
+      if (event.key !== " ") { popupExitPickMode(); popupSpaceCount = 0; popupLastSpaceTime = 0; }
+    }
+
+    // Double/triple space detection
+    if (event.key === " " && !event.isComposing && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const now = Date.now();
+      if (now - popupLastSpaceTime <= 400) {
+        popupSpaceCount++;
+      } else {
+        popupSpaceCount = 1;
+      }
+      popupLastSpaceTime = now;
+
+      if (popupSpaceCount === 2 && state.groups.length > 0 && popupPickMode !== "site") {
+        event.preventDefault();
+        const ta = queryInput;
+        const pos = ta.selectionStart ?? 0;
+        if (pos > 0 && ta.value[pos - 1] === " ") {
+          ta.value = ta.value.slice(0, pos - 1) + ta.value.slice(pos);
+          ta.setSelectionRange(pos - 1, pos - 1);
+          ta.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        if (popupPickMode !== "group") popupEnterGroupPickMode();
+        return;
+      }
+      if (popupSpaceCount === 3) {
+        event.preventDefault();
+        if (popupPickMode === "group") popupExitPickMode();
+        popupSpaceCount = 0;
+        popupLastSpaceTime = 0;
+        await popupEnterSitePickMode();
+        return;
+      }
+    } else if (event.key !== "Shift" && event.key !== "Control" && event.key !== "Alt" && event.key !== "Meta") {
+      popupSpaceCount = 0;
+      popupLastSpaceTime = 0;
+    }
+
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     await runDefaultSearch();
@@ -166,6 +347,7 @@ async function refreshHistory() {
 }
 
 function applyUiPrefs() {
+  applyDarkModeToDoc(state.uiPrefs.darkMode);
   const { historySection, randomPromptBtn, promptEntryBtn, composerActionsRow } = state.dom;
 
   if (historySection) {

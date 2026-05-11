@@ -7,6 +7,7 @@ import {
   UI_PREFS_STORAGE_KEY,
   CUSTOM_SITES_STORAGE_KEY,
   RANDOM_QUESTIONS_STORAGE_KEY,
+  QUICK_ACCESS_SITES_KEY,
 } from "../../shared/storage-keys.js";
 import {
   state,
@@ -32,6 +33,7 @@ import {
   loadDefaultRandomQuestionsText,
 } from "./sections/random.js";
 import { renderOtherSection } from "./sections/other.js";
+import { renderMiscSection, applyDarkMode } from "./sections/misc.js";
 import { renderAboutSection } from "./sections/about.js";
 import { handleExport, handleImportFileChange } from "./import-export.js";
 
@@ -45,6 +47,7 @@ function cacheElements() {
   state.dom.customSection = document.getElementById("customSection");
   state.dom.randomSection = document.getElementById("randomSection");
   state.dom.otherSection = document.getElementById("otherSection");
+  state.dom.miscSection = document.getElementById("miscSection");
   state.dom.aboutSection = document.getElementById("aboutSection");
   state.dom.sectionEyebrow = document.getElementById("sectionEyebrow");
   state.dom.sectionLogoWrap = document.getElementById("sectionLogoWrap");
@@ -63,11 +66,11 @@ function registerRenderCallbacks() {
   state.renderCustomSection = renderCustomSection;
   state.renderRandomSection = renderRandomSection;
   state.renderOtherSection = renderOtherSection;
+  state.renderMiscSection = renderMiscSection;
   state.renderAboutSection = renderAboutSection;
 }
 
 async function start() {
-  applyDomI18n?.(document);
   cacheElements();
   registerRenderCallbacks();
 
@@ -78,20 +81,21 @@ async function start() {
     UI_PREFS_STORAGE_KEY,
     CUSTOM_SITES_STORAGE_KEY,
     RANDOM_QUESTIONS_STORAGE_KEY,
+    QUICK_ACCESS_SITES_KEY,
   ]);
   state.customSites = createNormalizedCustomSites(stored[CUSTOM_SITES_STORAGE_KEY]);
   state.sites = mergeSites(builtinSites, state.customSites);
+  state.quickAccessSiteIds = Array.isArray(stored[QUICK_ACCESS_SITES_KEY])
+    ? stored[QUICK_ACCESS_SITES_KEY].filter((id) => typeof id === "string")
+    : [];
   syncCustomCategoryIds();
   state.groups = createNormalizedGroups(stored[GROUPS_STORAGE_KEY]);
   state.promptGroups = createNormalizedPromptGroups(stored[PROMPTS_STORAGE_KEY]);
   state.uiPrefs = createNormalizedUiPrefs(stored[UI_PREFS_STORAGE_KEY]);
-  const uiLang = (() => {
-    try {
-      return (chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
-    } catch (_e) {
-      return (navigator.language || "").toLowerCase();
-    }
-  })();
+  applyDarkMode(state.uiPrefs.darkMode);
+  window.__QSHOT_I18N__?.setLocaleMode?.(state.uiPrefs.localeMode);
+  applyDomI18n?.(document);
+  const uiLang = (window.__QSHOT_I18N__?.getUiLanguage?.() || navigator.language || "").toLowerCase();
   state.defaultRandomQuestionsText = await loadDefaultRandomQuestionsText(uiLang);
   const otherLang = uiLang.startsWith("zh") ? "en" : "zh";
   const otherDefaultRandomQuestionsText = await loadDefaultRandomQuestionsText(otherLang);
@@ -158,6 +162,16 @@ function bindEvents() {
 }
 
 function handleDocumentClick(event) {
+  if (state.openQuickSitesPicker && !event.target.closest(".quick-sites-add-wrap")) {
+    state.openQuickSitesPicker = false;
+    state.quickPickerCategoryKey = null;
+    if (state.quickPickerCloseTimerId) {
+      clearTimeout(state.quickPickerCloseTimerId);
+      state.quickPickerCloseTimerId = null;
+    }
+    renderOtherSection();
+    return;
+  }
   if (state.openPickerGroupId && !event.target.closest(".inline-add-wrap")) {
     closePicker();
     renderGroupsSection();
@@ -221,6 +235,10 @@ function renderCurrentSection() {
     renderOtherSection();
     return;
   }
+  if (state.activeSection === "misc") {
+    renderMiscSection();
+    return;
+  }
   if (state.activeSection === "about") {
     renderAboutSection();
     return;
@@ -235,6 +253,7 @@ function updateSectionVisibility() {
   const showCustom = state.activeSection === "custom";
   const showRandom = state.activeSection === "random";
   const showOther = state.activeSection === "other";
+  const showMisc = state.activeSection === "misc";
   const showAbout = state.activeSection === "about";
   if (dom.groupsSection) {
     dom.groupsSection.hidden = !showGroups;
@@ -255,6 +274,10 @@ function updateSectionVisibility() {
   if (dom.otherSection) {
     dom.otherSection.hidden = !showOther;
     dom.otherSection.style.display = showOther ? "flex" : "none";
+  }
+  if (dom.miscSection) {
+    dom.miscSection.hidden = !showMisc;
+    dom.miscSection.style.display = showMisc ? "flex" : "none";
   }
   if (dom.aboutSection) {
     dom.aboutSection.hidden = !showAbout;

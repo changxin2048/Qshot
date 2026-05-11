@@ -39,11 +39,16 @@ export const state = {
 
 export function createNormalizedUiPrefs(input) {
   const src = input && typeof input === "object" ? input : {};
+  const rawLocale = src.localeMode;
+  const localeMode = rawLocale === "zh" || rawLocale === "en" || rawLocale === "auto" ? rawLocale : "auto";
   return {
     showHistory: src.showHistory === true,
     showRandomButton: src.showRandomButton !== false,
     showPromptButton: src.showPromptButton !== false,
     prewarmEnabled: src.prewarmEnabled !== false,
+    darkMode: src.darkMode === "dark" || src.darkMode === "light" ? src.darkMode
+             : src.darkMode === true ? "dark" : "auto",
+    localeMode
   };
 }
 

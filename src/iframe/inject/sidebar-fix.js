@@ -48,12 +48,12 @@ export async function initEmbedSidebarFix(resolveSite) {
       "main [class*='max-w']:not([class*='max-w-none']) { max-width: 100% !important; }",
     ],
     deepseek: [
-      "/* AI批量搜索：隐藏 DeepSeek 侧边栏，消除左侧留白 */",
-      "[class*='sidebar'], [class*='side-bar'], [class*='left-panel'], [class*='left_panel'], [class*='nav-panel'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
-      "aside, nav, [role='navigation'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
-      "div:has(> aside), div:has(> nav), div:has([class*='sidebar']):not(:has(textarea)):not(:has([contenteditable='true'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+      "/* AI批量搜索：隐藏 DeepSeek 侧边栏，消除左侧留白；用户点击时临时解除抑制 */",
+      "html:not(.qshot-user-active) [class*='sidebar'], html:not(.qshot-user-active) [class*='side-bar'], html:not(.qshot-user-active) [class*='left-panel'], html:not(.qshot-user-active) [class*='left_panel'], html:not(.qshot-user-active) [class*='nav-panel'], html:not(.qshot-user-active) [class*='chat-list'], html:not(.qshot-user-active) [class*='conversation-list'], html:not(.qshot-user-active) [class*='history'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
+      "html:not(.qshot-user-active) aside, html:not(.qshot-user-active) nav, html:not(.qshot-user-active) [role='navigation'] { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
+      "html:not(.qshot-user-active) div:has(> aside), html:not(.qshot-user-active) div:has(> nav), html:not(.qshot-user-active) div:has([class*='sidebar']):not(:has(textarea)):not(:has([contenteditable='true'])) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
       "/* structural fallback: hide sidebar by DOM position regardless of class names */",
-      "#root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
+      "html:not(.qshot-user-active) #root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; overflow: hidden !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; transform: translateX(-120%) !important; pointer-events: none !important; }",
       "main, [role='main'], [class*='chat-main'], [class*='main-content'], [class*='conversation'] { flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding-left: 0 !important; margin-left: 0 !important; transform: none !important; }",
     ],
     qwen: [
@@ -129,31 +129,68 @@ function installEarlyDeepSeekSidebarCss() {
   const STYLE_ID = "ai-compare-deepseek-early-sidebar-fix";
   if (document.getElementById(STYLE_ID)) return;
 
+  // 用 :not(.qshot-user-active) 包裹所有规则，
+  // 当用户主动点击时在 html 上加该 class，CSS 抑制临时失效
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = [
     "/* Qshot: prevent DeepSeek mobile drawer from flashing in iframe */",
-    "aside, nav, [role='navigation'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
-    "[class*='sidebar'], [class*='side-bar'], [class*='sider'], [class*='drawer'], [class*='chat-list'], [class*='conversation-list'], [class*='history'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
-    "[class*='mask'], [class*='overlay'], [class*='backdrop'] { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }",
+    "html:not(.qshot-user-active) aside, html:not(.qshot-user-active) nav, html:not(.qshot-user-active) [role='navigation'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
+    "html:not(.qshot-user-active) [class*='sidebar'], html:not(.qshot-user-active) [class*='side-bar'], html:not(.qshot-user-active) [class*='sider'], html:not(.qshot-user-active) [class*='drawer'], html:not(.qshot-user-active) [class*='chat-list'], html:not(.qshot-user-active) [class*='conversation-list'], html:not(.qshot-user-active) [class*='history'] { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; }",
+    "html:not(.qshot-user-active) [class*='mask'], html:not(.qshot-user-active) [class*='overlay'], html:not(.qshot-user-active) [class*='backdrop'] { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }",
     "main, [role='main'], [class*='chat-main'], [class*='main-content'] { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding-left: 0 !important; transform: none !important; }",
     "/* structural fallback: hide first non-input sibling in root layout regardless of class names */",
-    "#root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
+    "html:not(.qshot-user-active) #root > div > div:first-child:not(:has(textarea)):not(:has([contenteditable='true'])):not(:last-child) { display: none !important; visibility: hidden !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; opacity: 0 !important; overflow: hidden !important; pointer-events: none !important; transform: translateX(-120%) !important; flex: none !important; flex-basis: 0 !important; padding: 0 !important; margin: 0 !important; }",
   ].join("\n");
 
   (document.head || document.documentElement).appendChild(style);
+
+  // 监听用户点击：点击后 2.5 秒内解除 CSS 抑制，让侧边栏能正常展开
+  let clearTimer = null;
+  document.addEventListener("click", () => {
+    document.documentElement.classList.add("qshot-user-active");
+    clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      document.documentElement.classList.remove("qshot-user-active");
+    }, 2500);
+  }, true);
 }
 
 function startDeepSeekSidebarSuppressor() {
   if (window.__QSHOT_DEEPSEEK_SIDEBAR_SUPPRESSOR__) return;
   window.__QSHOT_DEEPSEEK_SIDEBAR_SUPPRESSOR__ = true;
 
+  // 用户主动点击后暂停抑制 2.5 秒，让侧边栏能正常响应交互
+  let userClickPauseUntil = 0;
+  let clearInlineTimer = null;
+  document.addEventListener("click", () => {
+    userClickPauseUntil = Date.now() + 2500;
+    // 清除 forceHideElement 留下的 inline style，让侧边栏能正常展示
+    document.querySelectorAll("[data-qshot-deepseek-hidden='true']").forEach((el) => {
+      el.removeAttribute("data-qshot-deepseek-hidden");
+      el.style.removeProperty("display");
+      el.style.removeProperty("visibility");
+      el.style.removeProperty("opacity");
+      el.style.removeProperty("pointer-events");
+      el.style.removeProperty("width");
+      el.style.removeProperty("min-width");
+      el.style.removeProperty("max-width");
+      el.style.removeProperty("transform");
+    });
+    clearTimeout(clearInlineTimer);
+    clearInlineTimer = setTimeout(() => {
+      userClickPauseUntil = 0;
+    }, 2500);
+  }, true);
+
   let scheduled = false;
   const schedule = () => {
+    if (Date.now() < userClickPauseUntil) return;
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
+      if (Date.now() < userClickPauseUntil) return;
       suppressDeepSeekSidebar();
     });
   };
