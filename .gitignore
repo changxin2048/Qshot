@@ -1,5 +1,7 @@
 # Tool/editor generated metadata
 _metadata/
+.claude/
+.cursor/
 
 # OS files
 .DS_Store
