@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state, DEFAULT_VISIBLE_SITE_IDS } from "./state.js";
 import { loadEnabledSites } from "../../shared/site-registry.js";
 
 // customSites: 已由调用方从 storage 预取的自定义站点数组（可选）。
@@ -12,8 +12,20 @@ export async function loadSites(customSites) {
     state.sites = state.requestedSiteIds
       .map((siteId) => siteById.get(siteId))
       .filter(Boolean);
+    state.hiddenSiteIds.clear();
   } else {
     state.sites = mergedSites;
+    // 首次打开（无 URL 指定站点、无历史恢复）时只显示默认站点
+    if (state.restoreHistoryEntryId) {
+      state.hiddenSiteIds.clear();
+    } else {
+      const defaults = new Set(DEFAULT_VISIBLE_SITE_IDS);
+      state.hiddenSiteIds.clear();
+      for (const site of mergedSites) {
+        if (!defaults.has(site.id)) {
+          state.hiddenSiteIds.add(site.id);
+        }
+      }
+    }
   }
-  state.hiddenSiteIds.clear();
 }

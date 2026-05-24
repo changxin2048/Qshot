@@ -68,17 +68,19 @@ export function createSiteCard(site) {
   card.className = "iframe-card";
   card.dataset.siteId = site.id;
   card.tabIndex = 0;
-  card.addEventListener("mouseenter", () => {
-    card.classList.add("is-actions-visible");
+  const headerRow = document.createElement("div");
+  headerRow.className = "card-header-row";
+  headerRow.addEventListener("mouseenter", () => {
+    headerRow.classList.add("is-actions-visible");
   });
-  card.addEventListener("mouseleave", () => {
-    card.classList.remove("is-actions-visible");
+  headerRow.addEventListener("mouseleave", () => {
+    headerRow.classList.remove("is-actions-visible");
   });
-  card.addEventListener("focusin", () => {
-    card.classList.add("is-actions-visible");
+  headerRow.addEventListener("focusin", () => {
+    headerRow.classList.add("is-actions-visible");
   });
-  card.addEventListener("focusout", () => {
-    card.classList.remove("is-actions-visible");
+  headerRow.addEventListener("focusout", () => {
+    headerRow.classList.remove("is-actions-visible");
   });
 
   const title = document.createElement("h3");
@@ -105,8 +107,8 @@ export function createSiteCard(site) {
   jumpBtn.type = "button";
   jumpBtn.className = "card-hover-btn card-hover-btn-icon";
   jumpBtn.innerHTML = iconJump;
-  jumpBtn.setAttribute("data-tooltip", "跳往原网站");
-  jumpBtn.setAttribute("aria-label", "跳往原网站");
+  jumpBtn.setAttribute("data-tooltip", "前往原网站");
+  jumpBtn.setAttribute("aria-label", "前往原网站");
   jumpBtn.addEventListener("click", () => {
     const ref = state.cardRefs.get(site.id);
     const targetUrl = ref?.currentUrl || site.url;
@@ -168,6 +170,9 @@ export function createSiteCard(site) {
   hoverActions.appendChild(refreshBtn);
   hoverActions.appendChild(closeBtn);
 
+  headerRow.appendChild(title);
+  headerRow.appendChild(hoverActions);
+
   const initialUrl = site.restoreUrl || site.url;
   const ref = {
     site,
@@ -199,9 +204,8 @@ export function createSiteCard(site) {
   // 默认走并发队列（immediate=false）；调用方可通过 refreshSiteCard 传 immediate=true 走立即路径。
   createIframeBody(ref);
 
-  card.appendChild(title);
+  card.appendChild(headerRow);
   card.appendChild(body);
-  card.appendChild(hoverActions);
   return card;
 }
 
