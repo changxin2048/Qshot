@@ -8,6 +8,7 @@ import {
   CUSTOM_SITES_STORAGE_KEY,
   RANDOM_QUESTIONS_STORAGE_KEY,
   QUICK_ACCESS_SITES_KEY,
+  DEFAULT_CARDS_STORAGE_KEY,
 } from "../../shared/storage-keys.js";
 import {
   state,
@@ -82,11 +83,15 @@ async function start() {
     CUSTOM_SITES_STORAGE_KEY,
     RANDOM_QUESTIONS_STORAGE_KEY,
     QUICK_ACCESS_SITES_KEY,
+    DEFAULT_CARDS_STORAGE_KEY,
   ]);
   state.customSites = createNormalizedCustomSites(stored[CUSTOM_SITES_STORAGE_KEY]);
   state.sites = mergeSites(builtinSites, state.customSites);
   state.quickAccessSiteIds = Array.isArray(stored[QUICK_ACCESS_SITES_KEY])
     ? stored[QUICK_ACCESS_SITES_KEY].filter((id) => typeof id === "string")
+    : [];
+  state.defaultCardIds = Array.isArray(stored[DEFAULT_CARDS_STORAGE_KEY])
+    ? stored[DEFAULT_CARDS_STORAGE_KEY].filter((id) => typeof id === "string")
     : [];
   syncCustomCategoryIds();
   state.groups = createNormalizedGroups(stored[GROUPS_STORAGE_KEY]);
@@ -162,6 +167,16 @@ function bindEvents() {
 }
 
 function handleDocumentClick(event) {
+  if (state.openDefaultCardsPicker && !event.target.closest("#defaultCardsChipList")) {
+    state.openDefaultCardsPicker = false;
+    state.defaultCardsPickerCategoryKey = null;
+    if (state.defaultCardsPickerCloseTimerId) {
+      clearTimeout(state.defaultCardsPickerCloseTimerId);
+      state.defaultCardsPickerCloseTimerId = null;
+    }
+    renderGroupsSection();
+    return;
+  }
   if (state.openQuickSitesPicker && !event.target.closest(".quick-sites-add-wrap")) {
     state.openQuickSitesPicker = false;
     state.quickPickerCategoryKey = null;

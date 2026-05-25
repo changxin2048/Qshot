@@ -5,6 +5,7 @@ export const CUSTOM_SITES_STORAGE_KEY = "customSites";
 export const RANDOM_QUESTIONS_STORAGE_KEY = "randomQuestionsText";
 export const SEARCH_HISTORY_STORAGE_KEY = "searchHistory";
 export const QUICK_ACCESS_SITES_KEY = "quickAccessSites";
+export const DEFAULT_CARDS_STORAGE_KEY = "defaultCardIds";
 
 // The fixed "All" prompt group: always first, cannot be deleted or renamed.
 export const DEFAULT_PROMPT_GROUP_ID = "prompt-group-default";

@@ -39,7 +39,7 @@ import {
 } from "./add-site.js";
 import { showExportModal } from "./export.js";
 import { bindFileUploadEvents } from "./file-upload.js";
-import { UI_PREFS_STORAGE_KEY, CUSTOM_SITES_STORAGE_KEY } from "../../shared/storage-keys.js";
+import { UI_PREFS_STORAGE_KEY, CUSTOM_SITES_STORAGE_KEY, DEFAULT_CARDS_STORAGE_KEY } from "../../shared/storage-keys.js";
 
 let _darkModeMediaListener = null;
 
@@ -89,6 +89,7 @@ async function start() {
       STORAGE_KEYS.searchHistory,
       STORAGE_KEYS.promptGroups,
       CUSTOM_SITES_STORAGE_KEY,
+      DEFAULT_CARDS_STORAGE_KEY,
     ];
     const [stored] = await Promise.all([
       chrome.storage.local.get(allStorageKeys),
@@ -107,7 +108,10 @@ async function start() {
     updateSendBtnState();
     await restorePreferences(stored);
     bindPromptPickerEvents();
-    await loadSites(stored[CUSTOM_SITES_STORAGE_KEY]);
+    await loadSites({
+      customSites: stored[CUSTOM_SITES_STORAGE_KEY],
+      defaultCardIds: stored[DEFAULT_CARDS_STORAGE_KEY],
+    });
     const restoredEntry = applyHistoryRestoreFromUrl();
     renderCards();
     setGlobalStatus(restoredEntry

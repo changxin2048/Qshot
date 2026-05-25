@@ -1,4 +1,7 @@
 import {
+  DEFAULT_CARDS_STORAGE_KEY,
+} from "../../../shared/storage-keys.js";
+import {
   state,
   msg,
   SITE_CATEGORIES,
@@ -9,11 +12,275 @@ import {
 } from "../state.js";
 import { escapeHtml, getGroupById } from "../utils.js";
 import { persistAll, getCategorySites } from "../store.js";
-import { attachChipDrag } from "../drag.js";
+import { attachChipDrag, attachChipDragGeneric } from "../drag.js";
+
+// 将默认卡片 ID 列表持久化到 chrome.storage.local
+async function persistDefaultCards() {
+  const ids = Array.isArray(state.defaultCardIds) ? state.defaultCardIds : [];
+  if (ids.length === 0) {
+    // 清空时移除键，让 iframe 页回退到内置默认值
+    await chrome.storage.local.remove(DEFAULT_CARDS_STORAGE_KEY);
+  } else {
+    await chrome.storage.local.set({ [DEFAULT_CARDS_STORAGE_KEY]: ids });
+  }
+}
+
+// 在 groupsSection 顶部渲染"首页默认卡片"设置卡，
+// 样式参照已有搜索组卡片，名称固定为"首页"、呈现方式预留但不可选。
+function renderDefaultCards() {
+  const section = state.dom.groupsSection;
+  if (!section) return;
+
+  const card = document.createElement("section");
+  card.className = "settings-group-card";
+  card.innerHTML = `
+    <div class="settings-group-meta">
+      <div class="group-inline-controls group-inline-controls-split">
+        <label class="inline-control group-name-inline-wrap">
+          <span class="field-label inline-field-label">${msg("settings_groups_fieldName", "搜索组名称")}</span>
+          <input class="group-name-input" type="text" value="${msg("settings_defaultCards_name", "首页")}" readonly style="cursor:default;background:#f8f8f8;" />
+        </label>
+        <label class="inline-control inline-mode-control inline-mode-select-wrap">
+          <span class="field-label inline-field-label">${msg("settings_groups_fieldMode", "呈现方式")}</span>
+          <div class="group-mode-dropdown" style="opacity:0.5;pointer-events:none;">
+            <button class="group-mode-trigger" type="button" disabled>
+              <span class="group-mode-trigger-label">${msg("settings_groups_modeCompare", "卡片呈现")}</span>
+              <span class="group-mode-trigger-arrow" aria-hidden="true"></span>
+            </button>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="settings-group-sites">
+      <div class="site-chip-list" id="defaultCardsChipList"></div>
+    </div>
+  `;
+
+  const chipList = card.querySelector("#defaultCardsChipList");
+  renderDefaultCardsChips(chipList);
+  // 只绑定一次拖拽，避免 renderDefaultCardsChips 重复调用导致监听器累积
+  attachChipDragGeneric(chipList, async (newIds) => {
+    state.defaultCardIds = newIds;
+    await persistDefaultCards();
+    renderDefaultCardsChips(chipList);
+  });
+  section.appendChild(card);
+}
+
+// 渲染默认卡片的站点选择芯片列表及添加按钮
+function renderDefaultCardsChips(chipList) {
+  chipList.innerHTML = "";
+
+  // 已选中的站点芯片
+  const selectedSites = (state.defaultCardIds || [])
+    .map((id) => state.sites.find((s) => s.id === id))
+    .filter(Boolean);
+
+  selectedSites.forEach((site) => {
+    const chip = document.createElement("div");
+    chip.className = "site-chip selected-chip";
+    chip.dataset.siteId = site.id;
+    chip.innerHTML = `<span class="site-chip-label">${escapeHtml(site.name)}</span><button class="chip-remove-btn" type="button" aria-label="${msg("settings_groups_removeSitePrefix", "删除 ")}${escapeHtml(site.name)}">×</button>`;
+    chip.querySelector(".chip-remove-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      state.defaultCardIds = (state.defaultCardIds || []).filter((id) => id !== site.id);
+      await persistDefaultCards();
+      renderDefaultCardsChips(chipList);
+    });
+    chipList.appendChild(chip);
+  });
+
+  // 添加按钮及选择面板
+  const addWrap = document.createElement("div");
+  addWrap.className = "inline-add-wrap";
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "inline-add-btn";
+  addBtn.textContent = msg("common_add", "新增");
+  addBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearDefaultCardsPickerTimer();
+    if (state.openDefaultCardsPicker) {
+      state.openDefaultCardsPicker = false;
+      state.defaultCardsPickerCategoryKey = null;
+    } else {
+      state.openDefaultCardsPicker = true;
+      if (!state.defaultCardsPickerCategoryKey || !SITE_CATEGORIES[state.defaultCardsPickerCategoryKey]) {
+        state.defaultCardsPickerCategoryKey = Object.keys(SITE_CATEGORIES)[0] || null;
+      }
+    }
+    renderDefaultCardsChips(chipList);
+  });
+  addWrap.appendChild(addBtn);
+
+  if (state.openDefaultCardsPicker) {
+    addWrap.appendChild(createDefaultCardsPicker(chipList));
+  }
+
+  chipList.appendChild(addWrap);
+}
+
+// 清除默认卡片选择面板的自动关闭定时器
+function clearDefaultCardsPickerTimer() {
+  if (state.defaultCardsPickerCloseTimerId) {
+    clearTimeout(state.defaultCardsPickerCloseTimerId);
+    state.defaultCardsPickerCloseTimerId = null;
+  }
+}
+
+// 延迟关闭默认卡片选择面板
+function scheduleDefaultCardsPickerClose(chipList) {
+  clearDefaultCardsPickerTimer();
+  state.defaultCardsPickerCloseTimerId = setTimeout(() => {
+    state.openDefaultCardsPicker = false;
+    state.defaultCardsPickerCategoryKey = null;
+    renderDefaultCardsChips(chipList);
+  }, PICKER_CLOSE_DELAY_MS);
+}
+
+// 切换默认卡片选择面板的分类
+function setDefaultCardsPickerCategory(key, chipList) {
+  if (state.defaultCardsPickerCategoryKey === key) return;
+  state.defaultCardsPickerCategoryKey = key;
+  renderDefaultCardsChips(chipList);
+}
+
+// 创建默认卡片站点选择面板
+function createDefaultCardsPicker(chipList) {
+  const panel = document.createElement("div");
+  panel.className = "hover-picker-panel is-open";
+  panel.addEventListener("click", (e) => e.stopPropagation());
+  panel.addEventListener("mouseenter", clearDefaultCardsPickerTimer);
+  panel.addEventListener("mouseleave", () => scheduleDefaultCardsPickerClose(chipList));
+
+  Object.entries(SITE_CATEGORIES).forEach(([key, category]) => {
+    const row = document.createElement("div");
+    row.className = "hover-picker-row";
+    const isActive = state.defaultCardsPickerCategoryKey === key;
+    if (isActive) row.classList.add("is-active");
+
+    const entry = document.createElement("button");
+    entry.className = "hover-picker-entry";
+    entry.type = "button";
+    entry.innerHTML = `<span>${escapeHtml(category.label)}</span><span class="hover-picker-arrow">›</span>`;
+    entry.addEventListener("mouseenter", () => {
+      clearDefaultCardsPickerTimer();
+      setDefaultCardsPickerCategory(key, chipList);
+    });
+    entry.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearDefaultCardsPickerTimer();
+      setDefaultCardsPickerCategory(key, chipList);
+    });
+    row.appendChild(entry);
+
+    const submenu = document.createElement("div");
+    submenu.className = `hover-picker-submenu${isActive ? " is-open" : ""}`;
+    submenu.addEventListener("mouseenter", clearDefaultCardsPickerTimer);
+    submenu.addEventListener("mouseleave", () => scheduleDefaultCardsPickerClose(chipList));
+
+    const categorySites = getCategorySites(key);
+
+    if (key === "custom") {
+      if (!categorySites.length) {
+        const empty = document.createElement("div");
+        empty.className = "hover-picker-empty";
+        empty.innerHTML = msg("settings_groups_customEmpty", `还没有自定义站点<br/><span class="hover-picker-empty-hint">前往左侧「自定义搜索」添加</span>`);
+        submenu.appendChild(empty);
+      } else {
+        categorySites.forEach((site) => submenu.appendChild(createDefaultCardPickerOption(site, chipList)));
+      }
+    } else {
+      submenu.classList.add("hover-picker-submenu--ai");
+      const columnsWrap = document.createElement("div");
+      columnsWrap.className = "hover-picker-ai-columns";
+      const groups = key === "ai" ? AI_SITE_GROUPS : SOCIAL_SITE_GROUPS;
+      groups.forEach((grp) => {
+        const groupSites = grp.siteIds.map((id) => categorySites.find((s) => s.id === id)).filter(Boolean);
+        if (!groupSites.length) return;
+        const col = document.createElement("div");
+        col.className = "hover-picker-ai-col";
+        const colTitle = document.createElement("div");
+        colTitle.className = "hover-picker-site-group-title";
+        colTitle.textContent = msg(grp.labelKey, grp.label);
+        col.appendChild(colTitle);
+        groupSites.forEach((site) => col.appendChild(createDefaultCardPickerOption(site, chipList)));
+        columnsWrap.appendChild(col);
+      });
+      submenu.appendChild(columnsWrap);
+    }
+
+    row.appendChild(submenu);
+    panel.appendChild(row);
+  });
+
+  // 底部"恢复默认"预设按钮
+  const presetRow = document.createElement("div");
+  presetRow.className = "hover-picker-presets";
+  const presetItem = document.createElement("div");
+  presetItem.className = "hover-picker-preset-item";
+  presetItem.innerHTML = `
+    <div class="hover-picker-preset-info">
+      <span class="hover-picker-preset-label">${msg("settings_defaultCards_restoreDefault", "恢复默认")}</span>
+      <span class="hover-picker-preset-sites">DeepSeek、Kimi、豆包、Gemini</span>
+    </div>
+  `;
+  const presetBtn = document.createElement("button");
+  presetBtn.type = "button";
+  presetBtn.className = "hover-picker-preset-apply";
+  presetBtn.textContent = msg("settings_defaultCards_apply", "应用");
+  presetBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    state.defaultCardIds = [];
+    await persistDefaultCards();
+    state.openDefaultCardsPicker = false;
+    state.defaultCardsPickerCategoryKey = null;
+    renderDefaultCardsChips(chipList);
+  });
+  presetItem.appendChild(presetBtn);
+  presetRow.appendChild(presetItem);
+  const tip = document.createElement("div");
+  tip.className = "hover-picker-tip";
+  tip.textContent = msg("settings_defaultCards_tip", "留空时自动使用内置默认站点。");
+  presetRow.appendChild(tip);
+  panel.appendChild(presetRow);
+
+  return panel;
+}
+
+// 创建默认卡片选择面板中的站点选项
+function createDefaultCardPickerOption(site, chipList) {
+  const label = document.createElement("label");
+  label.className = "hover-picker-option";
+  const isChecked = (state.defaultCardIds || []).includes(site.id);
+  label.innerHTML = `
+    <span class="hover-picker-option-text">${escapeHtml(site.name)}</span>
+    <input type="checkbox" ${isChecked ? "checked" : ""} />
+  `;
+  const checkbox = label.querySelector("input");
+  checkbox.addEventListener("click", (e) => e.stopPropagation());
+  checkbox.addEventListener("change", async () => {
+    clearDefaultCardsPickerTimer();
+    if (checkbox.checked) {
+      state.defaultCardIds = [...(state.defaultCardIds || []), site.id];
+    } else {
+      state.defaultCardIds = (state.defaultCardIds || []).filter((id) => id !== site.id);
+    }
+    await persistDefaultCards();
+    state.openDefaultCardsPicker = false;
+    state.defaultCardsPickerCategoryKey = null;
+    renderDefaultCardsChips(chipList);
+  });
+  return label;
+}
 
 export function renderGroupsSection() {
   const { groupsSection } = state.dom;
   groupsSection.innerHTML = "";
+
+  // 在搜索组列表之前渲染"首页默认卡片"设置
+  renderDefaultCards();
 
   if (!state.groups.length) {
     const emptyState = document.createElement("section");

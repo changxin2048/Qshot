@@ -1,9 +1,11 @@
 import { state, DEFAULT_VISIBLE_SITE_IDS } from "./state.js";
 import { loadEnabledSites } from "../../shared/site-registry.js";
 
-// customSites: 已由调用方从 storage 预取的自定义站点数组（可选）。
-// 传入时跳过内部的 chrome.storage.local.get，减少一次 IPC 往返。
-export async function loadSites(customSites) {
+// storageData: 由调用方预取的存储数据对象，可包含 customSites / defaultCardIds。
+// 传入时跳过内部的 chrome.storage.local.get，减少 IPC 往返。
+export async function loadSites(storageData) {
+  const customSites = Array.isArray(storageData) ? storageData : storageData?.customSites;
+  const defaultCardIds = Array.isArray(storageData?.defaultCardIds) ? storageData.defaultCardIds : [];
   const options = Array.isArray(customSites) ? { customSites } : {};
   const mergedSites = await loadEnabledSites(options);
   state.allSites = mergedSites;
@@ -19,9 +21,19 @@ export async function loadSites(customSites) {
     if (state.restoreHistoryEntryId) {
       state.hiddenSiteIds.clear();
     } else {
-      const defaults = new Set(DEFAULT_VISIBLE_SITE_IDS);
+      // 优先使用用户在设置页配置的默认卡片列表，否则使用内置默认值
+      const hasCustomDefaults = defaultCardIds.length > 0;
+      const defaults = new Set(hasCustomDefaults ? defaultCardIds : DEFAULT_VISIBLE_SITE_IDS);
+      // 按 defaultCardIds 顺序重排 state.sites，保证卡片和导航条顺序与设置页一致
+      if (hasCustomDefaults) {
+        const siteById = new Map(mergedSites.map((s) => [s.id, s]));
+        const reordered = defaultCardIds.map((id) => siteById.get(id)).filter(Boolean);
+        const matchedIds = new Set(reordered.map((s) => s.id));
+        const rest = mergedSites.filter((s) => !matchedIds.has(s.id));
+        state.sites = [...reordered, ...rest];
+      }
       state.hiddenSiteIds.clear();
-      for (const site of mergedSites) {
+      for (const site of state.sites) {
         if (!defaults.has(site.id)) {
           state.hiddenSiteIds.add(site.id);
         }
